@@ -1,0 +1,3299 @@
+# Nícia Track — PROJECT EXPLAINED
+
+> **Documentação viva e didática do projeto.**
+> Objetivo: permitir estudar, revisar e explicar o sistema inteiro — em entrevistas ou daqui a 6 meses — **sem abrir o código-fonte**.
+>
+> **Regra de manutenção:** a cada fase concluída, este documento é **acrescentado ao final**, nunca sobrescrito. O histórico das fases anteriores é preservado integralmente.
+
+---
+
+## Índice
+
+- [Visão geral do produto](#visão-geral-do-produto)
+- [Glossário rápido](#glossário-rápido)
+- [Status das fases](#status-das-fases)
+- [FASE 1 — Arquitetura](#fase-1--arquitetura)
+- [FASE 2 — Modelagem](#fase-2--modelagem)
+- [FASE 3 — Importador das Questões](#fase-3--importador-das-questões)
+- [Otimização de Startup — Fase 1](#otimização-de-startup--fase-1)
+
+---
+
+## Visão geral do produto
+
+**Nícia Track** é uma plataforma de preparação para concursos públicos baseada em:
+
+- **Banco de questões** (800 questões reais já mapeadas)
+- **Simulados** (réplica da prova: 40 questões com distribuição por disciplina)
+- **Estatísticas** de desempenho
+- **Revisão de erros**
+- **Evolução temporal** (dashboard, streak, metas)
+
+A usuária inicial é **Nícia** (candidata ao cargo de Médico Veterinário — Concurso 003/2026, Prefeitura de Ponta Grossa/PR, banca Instituto UniFil), mas a **arquitetura é multiusuário desde o primeiro dia**.
+
+**Stack:** Python 3.12 · Django 4.2+ · PostgreSQL · Bootstrap 5 · HTMX · Docker · Pytest · Deploy no Render.
+
+---
+
+## Glossário rápido
+
+| Termo | Significado |
+|---|---|
+| **Disciplina (Subject)** | Matéria. Ex.: Português, Saúde Única. Cada seção do banco mestre é uma disciplina. |
+| **Tópico (Topic)** | Subdivisão de uma disciplina. Ex.: "Interpretação de Texto". |
+| **Questão (Question)** | Pergunta com enunciado + 4 alternativas + 1 correta + comentário. |
+| **Alternativa (Alternative)** | Opção A–D de uma questão. |
+| **Quiz** | Sessão de resolução (treino ou simulado) montada para um usuário. |
+| **Gabarito** | A letra correta de cada questão. |
+| **Service Layer** | Camada de classes Python que concentra a regra de negócio, fora das views. |
+| **Idempotência** | Propriedade de rodar uma operação várias vezes com o mesmo resultado (importar 2× não duplica). |
+| **CBV / FBV** | Class-Based View / Function-Based View (Django). |
+
+---
+
+## Status das fases
+
+| Fase | Tema | Status |
+|---|---|---|
+| 1 | Arquitetura | ✅ Concluída (design) |
+| 2 | Modelagem | ✅ Concluída (design) |
+| 3 | Importador das 800 questões | ✅ Concluída (implementada e validada) |
+| 4 | Autenticação | ✅ Concluída (implementada e validada) |
+| 5 | Banco de questões (resolução) | ✅ Concluída (implementada e validada) |
+| 6 | Dashboard | ✅ Concluída (implementada e validada) |
+| 7 | Estatísticas e pontos fracos | ✅ Concluída (implementada e validada) |
+| 8 | Simulados | ✅ Concluída (implementada e validada) |
+| 9 | Qualidade | ✅ Concluída (auditoria + correções) |
+| 10 | Deploy | ✅ Concluída (implementada e validada) |
+| — | Otimização de Startup (Fase 1) | ✅ Fast path implementado |
+
+---
+---
+
+# FASE 1 — Arquitetura
+
+## Objetivo
+
+Definir **toda a arquitetura antes de escrever código**: estrutura de pastas, apps Django, camadas, fluxos, e as decisões de stack (linguagem, banco, frontend, infraestrutura). A meta é evitar retrabalho nas fases seguintes (estatísticas, simulados, importação).
+
+## Problema que a fase resolve
+
+Sem uma arquitetura definida, cada funcionalidade nova seria implementada de forma ad hoc, gerando:
+- lógica de negócio espalhada dentro das views (difícil de testar),
+- acoplamento entre módulos não-relacionados,
+- decisões de infraestrutura tomadas tarde demais (e caras de reverter).
+
+A Fase 1 estabelece **fronteiras claras** (apps) e uma **camada de serviços** que isola a regra de negócio.
+
+## Arquivos criados
+
+Nesta fase **nenhum código foi escrito** — o entregável é o **desenho**. Os artefatos são as decisões registradas (e agora consolidadas aqui). A estrutura física de pastas foi materializada parcialmente na Fase 3 (`apps/questions/...`).
+
+## A arquitetura em camadas
+
+O sistema é um **Monolito Modular** (Majestic Monolith). Camadas, de cima para baixo:
+
+```
+┌─────────────────────────────────────────────┐
+│ Presentation — Django Templates + Bootstrap 5 │  ← o que o usuário vê
+│                (+ HTMX para reatividade)      │
+├─────────────────────────────────────────────┤
+│ View Layer — Class-Based Views                │  ← recebe request, devolve response
+├─────────────────────────────────────────────┤
+│ Service Layer — classes Python com regra de   │  ← O CÉREBRO. Onde mora a regra.
+│ negócio                                       │
+├─────────────────────────────────────────────┤
+│ Repository — QuerySets / Managers             │  ← consultas encapsuladas
+├─────────────────────────────────────────────┤
+│ Data — Django ORM + PostgreSQL                │  ← persistência
+├─────────────────────────────────────────────┤
+│ Infra — Redis (cache) + Celery (tasks)        │  ← suporte (fase posterior)
+└─────────────────────────────────────────────┘
+```
+
+**Princípio central:** a **View não pensa**. Ela coleta o input, chama um **Service**, e devolve a resposta. Toda a regra de negócio vive na Service Layer — que é Python puro e testável sem HTTP.
+
+## Estrutura de pastas
+
+```
+nicia-track/
+├── config/                  # Configuração do projeto Django
+│   ├── settings/
+│   │   ├── base.py          # comum a todos os ambientes
+│   │   ├── development.py    # DEBUG ligado, conveniências locais
+│   │   ├── production.py     # segurança, logging, static
+│   │   └── testing.py        # banco de teste, mocks
+│   ├── urls.py / wsgi.py / asgi.py
+│
+├── apps/                    # Apps de domínio (cada um uma fronteira)
+│   ├── core/                # utilitários compartilhados
+│   ├── accounts/            # autenticação e perfil
+│   ├── questions/           # banco de questões  ← já implementado (Fase 3)
+│   ├── exams/               # simulados e sessões
+│   ├── performance/         # desempenho e analytics
+│   └── dashboard/           # painel principal
+│
+├── services/                # Service Layer transversal
+├── templates/               # templates globais + partials HTMX
+├── static/                  # css / js / imagens
+├── tests/                   # unit / integration / functional
+├── docker/                  # Dockerfile + compose
+├── requirements/            # base / development / production
+├── docs/                    # esta documentação + banco mestre
+└── manage.py
+```
+
+## Apps criados e suas responsabilidades
+
+| App | Responsabilidade | Por que existe separado |
+|---|---|---|
+| **core** | `BaseModel` (UUID, timestamps, soft delete), mixins de view, validators, exceções de domínio | Evita repetição e dá um "tronco comum" a todos os apps |
+| **accounts** | `User` (email como login) + `Profile`, telas de cadastro/login/perfil | Identidade é um domínio próprio; isolá-la facilita trocar a estratégia de auth |
+| **questions** | `Subject`, `Topic`, `Question`, `Alternative`, filtros, importação | É o coração do conteúdo; precisa de fronteira clara para curadoria |
+| **exams** | `Quiz`, `QuizQuestion`, `UserAnswer`, sessão (iniciar/pausar/finalizar) | Resolução e simulado têm regras de estado complexas |
+| **performance** | `UserSubjectStat`, `StudySession`, agregações, pontos fracos | Analytics tem consultas pesadas; isolá-las evita poluir o app de questões |
+| **dashboard** | Visão consolidada, widgets, agenda | Orquestra dados dos outros apps numa única tela |
+
+## Fluxo geral do sistema
+
+```
+Usuário se cadastra/loga (accounts)
+   → escolhe treinar (questions) ou fazer simulado (exams)
+   → resolve questões; cada resposta é registrada (exams → UserAnswer)
+   → ao finalizar, o desempenho é processado (performance)
+   → o dashboard mostra a evolução consolidada (dashboard)
+```
+
+## Decisões arquiteturais
+
+### Por que Monolito Modular (e não microsserviços)?
+- **Escolhido:** escopo coeso, equipe pequena, domínio único. Apps dão modularidade sem a complexidade operacional de múltiplos serviços, deploys e redes.
+- **Alternativa:** microsserviços. **Rejeitada** por excesso de complexidade (orquestração, latência de rede, observabilidade) sem ganho real neste escopo.
+- **Vantagem:** simples de desenvolver, testar e implantar; refatorar fronteiras é barato.
+- **Desvantagem:** escala como uma unidade só; mitigável muito além do tamanho deste projeto.
+
+### Por que Service Layer?
+- Mantém as views finas e a regra de negócio **testável sem HTTP**.
+- **Alternativa:** lógica nas views ou nos models ("fat models"). **Rejeitada**: views viram difíceis de testar; models acumulam responsabilidades demais.
+
+### Por que HTMX (e não React/Vue)?
+- **Escolhido:** dá reatividade (responder questão sem recarregar a página) com complexidade mínima e mantendo a renderização no servidor.
+- **Alternativa:** SPA (React/Vue). **Rejeitada**: exigiria API separada, build de frontend, e duplicação de lógica — desnecessário para o escopo.
+
+### Por que Django?
+- "Batteries included": ORM, auth, admin, migrations, forms, segurança (CSRF, XSS, SQL injection) prontos.
+- Admin nativo é **ideal para a curadoria das 800 questões**.
+- Ecossistema maduro de testes (pytest-django) e deploy.
+- **Alternativa:** Flask/FastAPI. **Rejeitada**: exigiria montar manualmente auth, admin e ORM — reinventar o que o Django entrega pronto.
+
+### Por que PostgreSQL?
+- Banco relacional robusto, com integridade referencial (FKs, constraints), índices parciais, e tipos ricos.
+- O domínio é **fortemente relacional** (questões↔alternativas↔respostas↔usuários) — encaixa perfeitamente.
+- Suporte de primeira classe no Django e no Render (managed, com backup).
+- **Alternativa:** MySQL (menos recursos: índices parciais, tipos) ou NoSQL (**rejeitado**: perderíamos integridade relacional, que é essencial aqui).
+
+### Por que Bootstrap 5?
+- Grid responsivo pronto → **mesma experiência em desktop e mobile** (requisito do projeto) sem escrever CSS de layout do zero.
+- Componentes acessíveis e consistentes.
+- **Alternativa:** Tailwind (mais flexível, porém mais verboso e com curva maior) ou CSS próprio (lento). Bootstrap entrega o requisito de responsividade com menos esforço.
+
+### Por que Docker?
+- **Paridade dev/produção:** "funciona na minha máquina" deixa de ser problema.
+- Postgres + app sobem com um comando (`docker-compose up`).
+- O Render consome a mesma imagem.
+
+### Por que Render (deploy)?
+- PaaS simples com **PostgreSQL gerenciado + backups**, deploy via git, e free tier generoso.
+- Menos operação que AWS bruto; mais barato/simples que Heroku.
+- **Alternativa:** Railway/Fly.io (equivalentes) ou AWS (poderoso, porém operacionalmente caro). Render equilibra simplicidade e custo.
+
+## Vantagens da arquitetura escolhida
+
+- Testável (regra isolada em services).
+- Evolutiva (apps com fronteiras claras).
+- Barata de operar (um monolito, um banco, um PaaS).
+- Responsiva por padrão (Bootstrap + templates server-side).
+
+## O que aprendi nesta fase
+
+- **Monolito Modular vs microsserviços** — quando cada um faz sentido.
+- **Service Layer** como padrão para isolar regra de negócio.
+- **Server-side rendering + HTMX** como alternativa pragmática a SPAs.
+- Critérios de escolha de stack baseados em **requisito do projeto**, não em moda.
+
+## Perguntas de entrevista
+
+**P1. Por que escolher um monolito em vez de microsserviços?**
+R: Para um domínio coeso e equipe pequena, microsserviços adicionam complexidade (rede, orquestração, deploys múltiplos, observabilidade) sem ganho. O monolito modular dá separação lógica via apps e mantém a operação simples; as fronteiras podem ser extraídas para serviços depois, se necessário.
+
+**P2. O que é uma Service Layer e qual problema ela resolve?**
+R: É uma camada de classes Python que concentra a regra de negócio, fora das views e dos models. Resolve o acoplamento entre HTTP e domínio: a regra fica testável sem request, as views ficam finas, e os models não acumulam lógica demais.
+
+**P3. Por que HTMX em vez de React?**
+R: O sistema é renderizado no servidor. HTMX adiciona reatividade pontual (trocar fragmentos de HTML via requisição) sem precisar de uma SPA, API separada e build de frontend — menos complexidade para o mesmo resultado neste escopo.
+
+**P4. Por que PostgreSQL e não um NoSQL?**
+R: O domínio é fortemente relacional e exige integridade (uma resposta referencia uma alternativa que pertence a uma questão de um usuário). FKs, constraints e transações do Postgres garantem isso; um NoSQL exigiria reimplementar integridade na aplicação.
+
+## Resumo executivo
+
+A Fase 1 definiu um **monolito modular em Django** organizado em apps de domínio, com **Service Layer** isolando a regra de negócio, **templates Bootstrap + HTMX** para uma UI responsiva igual em desktop e mobile, **PostgreSQL** pela natureza relacional do domínio, e **Docker + Render** para paridade de ambiente e deploy simples. Todas as escolhas foram guiadas pelos requisitos (multiusuário, responsivo, testável) e não por tendência.
+
+---
+---
+
+# FASE 2 — Modelagem
+
+## Objetivo
+
+Desenhar **todas as entidades** do banco de dados, seus relacionamentos, campos, índices, constraints e regras de negócio — antes de gerar migrations.
+
+## Problema que a fase resolve
+
+Um modelo mal pensado é o erro mais caro de corrigir: migrations de produção, dados a migrar, código a reescrever. A Fase 2 antecipa o domínio inteiro (questões, simulados, respostas, estatísticas, histórico) para que as fases seguintes apenas **consumam** um modelo estável.
+
+## Arquivos criados
+
+Design (sem código). As classes de model serão materializadas em `apps/*/models.py` no scaffolding do Django. A Fase 3 já **assume** este modelo e adiciona 3 campos (ver [Ajustes da Fase 3](#ajustes-de-modelo-introduzidos-pela-fase-3)).
+
+## Diagrama de entidades (lógico)
+
+```
+User ──1:1── Profile
+  │
+  ├─1:N─ Quiz ──1:1── StudySession
+  │        │
+  │        ├─M:N─ Question   (via QuizQuestion)
+  │        └─1:N─ UserAnswer ──N:1── Alternative
+  │
+  └─1:N─ UserSubjectStat ──N:1── Subject
+
+Subject ─1:N─ Topic
+Subject ─1:N─ Question ─1:N─ Alternative
+Topic   ─1:N─ Question
+```
+
+## Models criados — detalhe por entidade
+
+> Para cada model: **função**, **relacionamentos** e **impacto no sistema**.
+
+### `User` (estende `AbstractUser`)
+- **Função:** identidade e autenticação. Usa **email como login** (`USERNAME_FIELD = 'email'`, UNIQUE).
+- **Relacionamentos:** 1:1 com `Profile`; 1:N com `Quiz`, `StudySession`, `UserAnswer`, `UserSubjectStat`.
+- **Impacto:** raiz de tudo que é "por usuário". Estender `AbstractUser` (em vez de usar o User padrão) é decisão consciente: permite evoluir o modelo de usuário sem migration traumática depois.
+
+### `Profile`
+- **Função:** dados de estudo do usuário (concurso-alvo, meta diária, nível, bio, avatar).
+- **Relacionamentos:** 1:1 com `User` (CASCADE).
+- **Impacto:** separa "quem o usuário é" (auth) de "como ele estuda" (preferências), mantendo o `User` enxuto.
+
+### `Subject` (Disciplina)
+- **Função:** matéria. Ex.: Português, Saúde Única.
+- **Relacionamentos:** 1:N com `Topic` e `Question`.
+- **Impacto:** eixo de filtragem e de estatística. Ganhou na Fase 3 o campo **`category`** (basic/specific) para montar a distribuição do simulado.
+
+### `Topic` (Tópico)
+- **Função:** subdivisão da disciplina.
+- **Relacionamentos:** N:1 com `Subject`; 1:N com `Question` (nullable na questão).
+- **Impacto:** granularidade fina para identificar pontos fracos (Fase 7). Slug único **dentro** da disciplina.
+
+### `Question`
+- **Função:** a questão em si — enunciado, banca, ano, dificuldade, comentário.
+- **Relacionamentos:** N:1 com `Subject` (PROTECT) e `Topic` (PROTECT, nullable); 1:N com `Alternative`.
+- **Impacto:** entidade central de conteúdo. `is_active=False` esconde de novos quizzes mas **preserva o histórico**. Ganhou na Fase 3: `external_id`, `content_hash`, `context_text`.
+
+### `Alternative`
+- **Função:** opção A–D de uma questão, com flag `is_correct`.
+- **Relacionamentos:** N:1 com `Question` (CASCADE).
+- **Impacto:** **exatamente uma** correta por questão (regra de negócio). Letra única por questão.
+
+### `Quiz`
+- **Função:** uma sessão de resolução (treino ou simulado), com tipo, status, limite de tempo.
+- **Relacionamentos:** N:1 com `User`; M:N com `Question` via `QuizQuestion`; 1:N com `UserAnswer`; 1:1 com `StudySession`.
+- **Impacto:** carrega a **máquina de estados** (created → in_progress → finished/expired).
+
+### `QuizQuestion` (tabela de junção)
+- **Função:** liga `Quiz` ↔ `Question` com **ordem**.
+- **Relacionamentos:** N:1 com `Quiz` (CASCADE) e `Question` (PROTECT).
+- **Impacto:** permite controlar a ordem de exibição e impedir questão repetida no mesmo quiz (UNIQUE `(quiz, question)` e `(quiz, order)`).
+
+### `UserAnswer`
+- **Função:** a resposta do usuário a uma questão dentro de um quiz.
+- **Relacionamentos:** N:1 com `Quiz` (CASCADE), `Question` (PROTECT), `Alternative` (nullable = pulou).
+- **Impacto:** base de toda estatística. `is_correct` é **calculado e gravado no submit** (nunca recalculado depois). UNIQUE `(quiz, question)`.
+
+### `StudySession`
+- **Função:** resumo de uma sessão de estudo (data, totais, duração) — base de streak e metas diárias.
+- **Relacionamentos:** N:1 com `User`; 1:1 com `Quiz`.
+- **Impacto:** evita recomputar agregados a partir de milhares de `UserAnswer` para a tela de evolução.
+
+### `UserSubjectStat` (agregação)
+- **Função:** desempenho acumulado de um usuário por disciplina (total respondido, total correto).
+- **Relacionamentos:** N:1 com `User` e `Subject`. UNIQUE `(user, subject)`.
+- **Impacto:** acelera o dashboard e os pontos fracos via **upsert** após cada quiz, em vez de varrer todas as respostas. `accuracy_pct` é **derivado**, nunca armazenado.
+
+## Índices (os mais importantes)
+
+| Tabela | Índice | Para quê |
+|---|---|---|
+| Question | `(subject, topic, difficulty, is_active)` | Filtros da tela de resolução |
+| Quiz | `(user, status)` / `(user, created_at desc)` | Listar quizzes do usuário |
+| UserAnswer | UNIQUE `(quiz, question)` | Integridade + busca de respostas |
+| StudySession | `(user, date desc)` | Streak e evolução |
+| UserSubjectStat | UNIQUE `(user, subject)` | Upsert e dashboard |
+| Alternative | parcial `(question) WHERE is_correct` | Achar a correta rápido |
+
+## Constraints e regras de negócio
+
+- **Email** único; usado como login.
+- **Alternativa:** letra única por questão; **exatamente uma** `is_correct=True` por questão (validado na service layer).
+- **Topic** deve pertencer ao mesmo `Subject` da questão.
+- **Quiz** só inicia se estiver `created`; não aceita respostas se `finished`/`expired`; simulado tem exatamente 40 questões.
+- **Resposta** só pode apontar para alternativa que pertence à questão; `is_correct` calculado no submit.
+- **`accuracy_pct`** sempre derivado (`correct/answered*100`).
+- **Streak** calculado dinamicamente a partir de `StudySession.date` (não armazenado); só conta o dia com ≥1 questão.
+- **PROTECT vs CASCADE:** apagar um `User` apaga seus quizzes/respostas (CASCADE); mas uma `Question` não pode ser apagada se há respostas/quizzes apontando para ela (PROTECT) — preserva integridade do histórico.
+
+## Decisões de modelagem
+
+- **UUID como PK** (via `BaseModel`): IDs não sequenciais, seguros de expor em URLs, e fáceis de mesclar entre ambientes.
+- **Agregados materializados** (`UserSubjectStat`, `StudySession`): trocam um pouco de redundância controlada por **performance de leitura** no dashboard. Atualizados por service, em transação.
+- **Soft delete + `is_active`**: nada de conteúdo é destruído; questões saem de circulação preservando histórico.
+
+### Ajustes de modelo introduzidos pela Fase 3
+
+A análise dos dados reais exigiu 3 acréscimos (a aplicar no scaffolding):
+
+| Model | Campo | Motivo |
+|---|---|---|
+| `Subject` | `category` (`basic` / `specific`) | Montar a distribuição do simulado (5+5+5+5+20) na Fase 8 |
+| `Question` | `external_id` (slug, UNIQUE) | Identidade estável para reimportação idempotente |
+| `Question` | `content_hash` (char 64) | Detectar edições e atualizar sem duplicar |
+| `Question` | `context_text` (TextField, nullable) | Textos-base de Português exibidos uma vez por grupo |
+
+## Vantagens e possíveis melhorias futuras
+
+**Vantagens:** integridade forte, leituras rápidas (agregados + índices), histórico preservado, pronto para multiusuário.
+
+**Melhorias futuras:**
+- Tags livres em `Question` para classificação cruzada.
+- Particionamento de `UserAnswer` se o volume explodir.
+- Tabela de `Achievement`/gamificação.
+- Versionamento de questão (auditar correções de conteúdo).
+
+## O que aprendi nesta fase
+
+- **Modelagem relacional** (1:1, 1:N, M:N com through table).
+- **`on_delete`**: CASCADE vs PROTECT vs SET_NULL e suas consequências.
+- **Desnormalização controlada** (agregados) para performance de leitura.
+- **Índices parciais e compostos** alinhados às consultas reais.
+- **Dado derivado vs armazenado** (`accuracy_pct`, streak).
+
+## Perguntas de entrevista
+
+**P1. Quando usar uma "through table" (tabela de junção explícita)?**
+R: Quando o relacionamento M:N precisa de **atributos próprios**. Aqui, `QuizQuestion` guarda a `order` da questão no quiz — impossível com um M:N simples.
+
+**P2. Por que `is_correct` é gravado na resposta em vez de calculado na hora de exibir?**
+R: O gabarito de uma questão pode ser corrigido depois. Gravar o resultado no momento do submit **congela** o histórico: a estatística do usuário reflete o que era verdade quando ele respondeu, e não muda retroativamente.
+
+**P3. Diferença entre CASCADE e PROTECT no `on_delete`?**
+R: CASCADE apaga os filhos junto com o pai (apagar `User` apaga seus `Quiz`). PROTECT impede apagar o pai se houver filhos (não dá para apagar uma `Question` que tem respostas) — protege a integridade do histórico.
+
+**P4. Por que materializar `UserSubjectStat` se dá para somar `UserAnswer`?**
+R: Performance de leitura. O dashboard e os pontos fracos seriam `GROUP BY` sobre dezenas de milhares de respostas a cada acesso. O agregado é atualizado por **upsert** no fim de cada quiz e lido em O(1) por disciplina.
+
+## Resumo executivo
+
+A Fase 2 modelou 11 entidades cobrindo usuários, conteúdo (disciplina→tópico→questão→alternativa), resolução (quiz→junção→resposta) e analytics (sessão, estatística por disciplina). As decisões-chave: **UUID como PK**, **integridade forte** com PROTECT/CASCADE, **agregados materializados** para leitura rápida, e **dados derivados** (accuracy, streak) calculados sob demanda. O modelo é estável o suficiente para que as fases seguintes apenas o consumam.
+
+---
+---
+
+# FASE 3 — Importador das Questões
+
+## Objetivo
+
+Transformar o arquivo **`docs/15_BANCO_MESTRE_DE_QUESTOES.md`** em **registros persistidos no PostgreSQL** — 800 questões com suas 3.200 alternativas, gabaritos e comentários, distribuídas em 13 disciplinas.
+
+## Problema que a fase resolve
+
+São **~800 questões**. Cadastrar manualmente uma a uma (cada qual com 4 alternativas, gabarito e comentário) seria **inviável** — dezenas de horas, propenso a erro. E sempre que o arquivo for corrigido, refazer o cadastro à mão seria pior ainda.
+
+**Solução:** um **Management Command** que lê o markdown, faz parsing automático e persiste tudo — de forma **idempotente** (rodar de novo não duplica; corrigir o `.md` e reimportar propaga a correção).
+
+## Estrutura do markdown (a fonte)
+
+O arquivo é **altamente regular** — fato confirmado por análise antes de codar:
+
+| Característica | Valor |
+|---|---|
+| Total de questões | **800** |
+| Seções (disciplinas) | **13** |
+| Alternativas por questão | **4** (A–D), nunca E |
+| Gabaritos | 800, todos A–D, distribuídos **200/200/200/200** |
+| Imagens | nenhuma |
+| Questões anuladas | nenhuma |
+| Numeração | **reinicia em 1** a cada seção |
+| Textos-base | só em Português: **2** (Texto I: q1–5; Texto II: q51–54 → 9 questões) |
+
+Formato de uma seção:
+
+```
+# SEÇÃO 1 — SAÚDE ÚNICA
+### 50 questões | Base: `01_SAUDE_UNICA_MASTER.md`
+
+**1.** Sobre o conceito de Saúde Única, assinale a correta.
+A) ...
+B) ...
+C) ...
+D) É uma abordagem integrada e unificada...
+
+---
+
+### 🔑 GABARITO E COMENTÁRIOS — SEÇÃO 1
+| Q | Gab | Comentário resumido | Ref. MASTER |
+|---|-----|---------------------|-------------|
+| 1 | **D** | Definição OHHLEP... | 01 §3.1 |
+
+---
+---
+```
+
+Em Português há ainda o bloco de texto-base:
+```
+> Texto I para as questões 1 a 5:
+>
+> *"...texto..."*
+```
+
+## Arquivos criados
+
+```
+apps/questions/
+├── importer/
+│   ├── parser.py          ← parser em Python puro (sem Django)
+│   └── mapping.py         ← 13 seções → disciplinas + categoria
+├── services/
+│   └── import_service.py  ← persistência idempotente (Django ORM)
+└── management/commands/
+    └── import_questions.py ← o comando manage.py
+scripts/
+└── validate_parse.py      ← validador standalone (roda sem Django)
+tests/
+├── unit/test_parser.py            ← 11 testes (inclui o arquivo real)
+└── integration/test_import_service.py ← idempotência (roda com DB)
+```
+
+## Arquivos modificados
+
+- `docs/PROJECT_EXPLAINED.md` — este documento.
+- Modelo da Fase 2 — **ajustado** com `Subject.category`, `Question.external_id`, `Question.content_hash`, `Question.context_text` (ver Fase 2 → Ajustes).
+
+## Classes criadas
+
+> **Nota:** a implementação real separa **parsing** (uma classe) de **persistência** (outra). O exemplo do roadmap citava uma classe única `QuestionImporter`; optou-se por **duas responsabilidades distintas** para maximizar testabilidade.
+
+### `BancoMestreParser` (`importer/parser.py`)
+- **Responsabilidade:** converter o texto markdown em objetos `ParsedQuestion` — **sem tocar no banco nem importar Django**.
+- **Por que foi criada?** Centralizar todo o parsing num lugar testável isoladamente. Por não depender de Django, **roda contra o arquivo real sem subir banco** (validação imediata).
+- **Quando é utilizada?** Chamada pelo `QuestionImportService` (e pelo `validate_parse.py`).
+- **Alternativa considerada:** fazer o parsing dentro do command. **Rejeitada:** acoplaria a lógica ao Django, dificultaria o teste e misturaria I/O de terminal com regra de parsing.
+
+### `ParsedQuestion`, `ParsedAlternative` (dataclasses)
+- **Responsabilidade:** representar uma questão/alternativa extraída, **antes** de virar model.
+- **Por que existem?** Desacoplam o resultado do parser do ORM. `ParsedQuestion` calcula dois valores-chave:
+  - **`external_id`** = `banco-mestre-s{seção:02d}-q{número:03d}` → identidade estável.
+  - **`content_hash`** = SHA-256 do conteúdo normalizado → detecta edições.
+- **Quando são usadas?** Saída do parser, entrada do service.
+
+### `ParseResult` e `ParseError`
+- **Responsabilidade:** `ParseResult` agrega todas as questões + todos os erros + estatísticas; `ParseError` descreve um problema (seção, número, mensagem).
+- **Por que existem?** Permitem **coletar todos os erros de uma vez** (em vez de estourar no primeiro), dando panorama completo numa rodada.
+
+### `SubjectMapping` / `SUBJECT_MAP` (`importer/mapping.py`)
+- **Responsabilidade:** mapear cada uma das 13 seções para uma disciplina (nome, slug, **categoria** basic/specific, cor).
+- **Por que foi criada?** O `category` é o que vai permitir a distribuição do simulado na Fase 8 (5 básicas + 20 específicas). Centralizar o mapeamento evita "magic strings" espalhadas.
+
+### `QuestionImportService` (`services/import_service.py`)
+- **Responsabilidade:** orquestrar parse + **persistência idempotente** no banco.
+- **Por que foi criada?** É a Service Layer da Fase 1 aplicada: o command não fala com o ORM, o parser não fala com o ORM — só o service.
+- **Quando é utilizada?** Chamada pelo command (`import_questions`).
+
+### `ImportReport`
+- **Responsabilidade:** resultado da importação (criadas, atualizadas, inalteradas, disciplinas, erros).
+- **Por que existe?** Dá uma saída estruturada e testável (sem depender de print).
+
+### `Command` (`management/commands/import_questions.py`)
+- **Responsabilidade:** interface de linha de comando — argumentos, I/O de terminal, exit codes.
+- **Por que foi criada?** É o ponto de entrada operacional. Só faz I/O; delega 100% da lógica ao service.
+
+## Services criados
+
+### `QuestionImportService`
+- **Responsabilidade:** transformar `ParseResult` em registros no Postgres, sem duplicar.
+- **Fluxo:**
+  1. `import_from_file(path)` → chama o parser.
+  2. Se o parse tem **qualquer** erro → retorna o relatório e **não grava nada** (fail-fast).
+  3. `--dry-run`? → simula (conta create/update/unchanged comparando hashes) sem gravar.
+  4. `_ensure_subjects()` → upsert das 13 disciplinas (`update_or_create` por slug).
+  5. Para cada questão → `_upsert_question()` numa **transação atômica**:
+     - `external_id` não existe → **CREATE** questão + `bulk_create` das 4 alternativas.
+     - `content_hash` igual → **UNCHANGED** (pula).
+     - `content_hash` diferente → **UPDATE** questão + apaga e regrava alternativas.
+- **Motivo da criação:** isolar persistência e idempotência num único lugar testável.
+
+## Models criados
+
+A Fase 3 **não cria models novos** — ela **popula** os models da Fase 2 (`Subject`, `Question`, `Alternative`) e exige os 3 campos adicionais já citados. Esse é o "contrato" entre as fases: o importador depende de `apps.questions.models`.
+
+## Fluxo de execução (passo a passo)
+
+Como as **800 questões saem do markdown e chegam ao PostgreSQL**:
+
+```
+1.  Operador roda:  python manage.py import_questions docs/15_BANCO_MESTRE_DE_QUESTOES.md
+2.  Command valida que o arquivo existe e instancia QuestionImportService.
+3.  Service chama BancoMestreParser.parse_file(path).
+4.  Parser lê o arquivo e QUEBRA por "# SEÇÃO N"  → 13 blocos.
+5.  Para cada bloco:
+      a. Extrai número e título da seção (regex).
+      b. Extrai o arquivo-base do subtítulo "### N questões | Base: `...`".
+      c. Separa CORPO (questões) do GABARITO (split em "### 🔑 GABARITO").
+      d. No corpo, captura textos-base ("> Texto I para as questões 1 a 5:").
+      e. Lê cada "**N.**" como início de questão; acumula o enunciado.
+      f. Lê "A) … B) … C) … D)" como alternativas.
+      g. No gabarito, lê cada linha "| N | **X** | comentário | ref |".
+      h. MERGE: casa a questão N com a linha N do gabarito →
+         marca a alternativa X como correta, anexa comentário e ref;
+         se a questão está no range de um texto-base, anexa o context_text.
+      i. VALIDA cada questão (4 alternativas A–D, exatamente 1 correta,
+         gabarito presente, sem enunciado/alternativa vazios).
+6.  Parser devolve ParseResult (800 questões, lista de erros).
+7.  Service: se houver QUALQUER erro → relata e ABORTA (nada gravado).
+8.  Service faz upsert das 13 disciplinas (Subject) com category basic/specific.
+9.  Para cada questão (transação atômica):
+      - calcula external_id e content_hash;
+      - decide CREATE / UNCHANGED / UPDATE comparando o hash com o banco;
+      - grava a Question e bulk_create das 4 Alternatives.
+10. Service devolve ImportReport; o command imprime
+    criadas / atualizadas / inalteradas / disciplinas.
+```
+
+**Evidência real de execução** (via `scripts/validate_parse.py` contra o arquivo verdadeiro):
+```
+Total de questoes : 800   |   Total de secoes : 13   |   Total de erros : 0
+Distribuicao de gabaritos: {'A': 200, 'B': 200, 'C': 200, 'D': 200}
+Questoes com texto-base (contexto): 9
+11 passed in 0.08s   (testes do parser)
+```
+
+## Validações
+
+**No parser (por questão):** exatamente 4 alternativas na ordem A,B,C,D; enunciado e alternativas não vazios; gabarito presente e em A–D; exatamente 1 correta; detecção de gabarito órfão (sem questão) e questão sem gabarito.
+
+**No service:** fail-fast (qualquer erro de parse aborta a gravação inteira); transação atômica por questão (questão + alternativas nunca ficam pela metade).
+
+## Tratamento de erros
+
+- **Coleta, não interrompe:** o parser acumula **todos** os erros (com seção + número) em `ParseResult.errors`, dando o panorama completo numa única rodada.
+- **`--strict`:** o command sai com código ≠ 0 se houver erro (útil em CI).
+- **`--dry-run`:** roda parse + validações e simula contra o banco, **sem gravar**.
+- **Arquivo inexistente:** `CommandError` imediato.
+
+## Prevenção de duplicidade (idempotência)
+
+Estratégia de **dupla chave**:
+
+| Chave | Função |
+|---|---|
+| **`external_id`** = `banco-mestre-s{seção}-q{número}` | Identidade estável (UNIQUE). Reimportar reusa o mesmo registro. |
+| **`content_hash`** = SHA-256 do conteúdo normalizado | Detecta edição. Igual → pula (`unchanged`); diferente → atualiza (`updated`). |
+
+- Rodar 2× → tudo `unchanged`, **zero duplicação**.
+- Corrigir um comentário no `.md` e reimportar → aquela questão vira `updated`, com alternativas regravadas.
+- **Trade-off:** `external_id` é **posicional**; inserir/reordenar questões no meio de uma seção remapearia os IDs. Para este arquivo (estável, append-only) é seguro. Fallback possível: dedup puramente por `content_hash`.
+
+## Ganhos obtidos
+
+- **Tempo:** ~800 questões cadastradas em segundos vs dezenas de horas manuais.
+- **Confiabilidade:** validação automática garante 4 alternativas + 1 correta em todas.
+- **Reprodutibilidade:** reimportar é seguro; correções no `.md` propagam.
+- **Testabilidade:** parser puro testado contra o arquivo real (11 testes verdes).
+- **Reuso futuro:** o mesmo importador serve para novos bancos no mesmo formato.
+
+## O que aprendi nesta fase
+
+- **Management Commands** (`BaseCommand`, `add_arguments`, `handle`, `CommandError`).
+- **Parsing por máquina de estados** e **regex** para texto semiestruturado.
+- **Idempotência** via chave natural + hash de conteúdo.
+- **`bulk_create`** para inserir as alternativas em uma query por questão (menos round-trips ao banco).
+- **`transaction.atomic`** para consistência (questão + alternativas como unidade).
+- **`update_or_create`** para upsert de disciplinas.
+- **Separar parsing de persistência** para testar cada um isoladamente.
+- **`select_for_update`** para evitar corrida ao atualizar uma questão existente.
+
+## Perguntas de entrevista
+
+**P1. Por que usar `bulk_create`?**
+R: Para inserir as 4 alternativas de uma questão em **uma única query** em vez de quatro. Reduz round-trips ao banco e melhora muito a performance ao escalar para milhares de inserts.
+
+**P2. Como o importador evita duplicar questões ao rodar de novo?**
+R: Cada questão tem um `external_id` estável (seção+número) com UNIQUE. Antes de criar, o service procura por esse id: se não existe, cria; se existe e o `content_hash` é igual, pula; se o hash mudou, atualiza. Assim a operação é **idempotente**.
+
+**P3. Por que separar o parser do management command?**
+R: Responsabilidade única e testabilidade. O parser é Python puro, sem Django — dá para testá-lo (e rodá-lo contra o arquivo real) sem subir banco. O command só cuida de I/O de terminal e delega ao service.
+
+**P4. Por que `transaction.atomic` na persistência de cada questão?**
+R: Para que questão e alternativas sejam gravadas como uma **unidade**. Se a inserção das alternativas falhasse no meio, a questão não pode ficar órfã (sem opções) — a transação garante tudo-ou-nada.
+
+**P5. Por que o parser coleta todos os erros em vez de parar no primeiro?**
+R: Para dar o panorama completo numa única rodada. Se há 5 questões malformadas, você quer ver as 5 de uma vez, corrigir o `.md` e reimportar — não descobrir uma por vez.
+
+**P6. O que é idempotência e por que ela importa aqui?**
+R: É a propriedade de uma operação produzir o mesmo resultado se executada várias vezes. Importa porque importações são repetidas (correções, novos lotes); sem idempotência, cada execução duplicaria dados.
+
+## Resumo executivo
+
+A Fase 3 implementou e **validou contra dados reais** um importador que leva as 800 questões do markdown ao PostgreSQL. A arquitetura separa **parser** (Python puro, testável isoladamente) de **service** (persistência idempotente via ORM), acionados por um **management command** com `--dry-run` e `--strict`. A idempotência usa **`external_id` + `content_hash`**, garantindo que reimportar não duplique e que correções propaguem. Resultado comprovado: 800 questões, 13 disciplinas, 0 erros de parsing, 11 testes verdes.
+
+---
+---
+
+# FASE 4 — Autenticação
+
+## Objetivo
+
+Criar o módulo de identidade do sistema: cadastro de usuários, login por e-mail, logout com confirmação e edição de perfil. É a primeira fase com código Django real em execução — models, views CBV, services, templates Bootstrap 5 responsivos e testes pytest-django.
+
+## Problema que a fase resolve
+
+Sem autenticação, não há "por usuário" — nenhuma estatística, simulado ou progresso pode ser personalizado. Esta fase estabelece a **fundação de identidade** sobre a qual todo o resto do sistema será construído.
+
+## Arquivos criados
+
+```
+config/
+├── __init__.py
+├── settings/
+│   ├── __init__.py
+│   ├── base.py          ← configuração base (todas as settings compartilhadas)
+│   ├── development.py   ← SQLite, DEBUG=True
+│   ├── testing.py       ← SQLite :memory:, MD5 hasher (testes rápidos)
+│   └── production.py    ← PostgreSQL, HTTPS, segurança
+├── urls.py              ← root URL dispatcher
+└── wsgi.py
+
+apps/core/
+├── __init__.py
+├── apps.py
+├── models.py            ← BaseModel (UUID PK, timestamps)
+└── exceptions.py        ← DomainException, ValidationError, NotFoundError
+
+apps/accounts/
+├── __init__.py
+├── apps.py              ← AccountsConfig (registra signals no ready())
+├── models.py            ← User (email login) + Profile + UserManager
+├── forms.py             ← RegisterForm, LoginForm, ProfileForm
+├── signals.py           ← post_save cria Profile automaticamente
+├── views.py             ← RegisterView, LoginView, LogoutView, ProfileView
+├── urls.py              ← /conta/ namespace="accounts"
+└── services/
+    └── user_service.py  ← UserService.register() / update_profile()
+
+apps/questions/
+├── apps.py
+└── models.py            ← Subject, Topic, Question, Alternative
+
+templates/
+├── base.html            ← layout global com navbar e messages
+└── accounts/
+    ├── base_auth.html   ← layout de tela de autenticação (card centrado)
+    ├── register.html
+    ├── login.html
+    ├── logout_confirm.html
+    └── profile.html
+
+tests/
+├── conftest.py          ← fixtures: user, client_logged
+├── unit/test_user_service.py
+└── integration/test_auth_views.py
+
+requirements/
+├── base.txt             ← Django 4.2, psycopg2, decouple, Pillow, whitenoise
+├── development.txt      ← + pytest, factory-boy, faker, black, isort
+└── production.txt       ← + sentry-sdk
+
+manage.py
+pytest.ini
+.env / .env.example
+```
+
+## Arquivos modificados
+
+- `config/settings/base.py` — adicionado `STORAGES` para suporte ao WhiteNoise sem warning de deprecação.
+- `apps/accounts/migrations/` — geradas `0001_initial.py` e `0002_alter_user_managers.py` (após criar o `UserManager` customizado).
+
+## Models criados
+
+### `User` (estende `AbstractUser`)
+- **Função:** identidade do usuário. Email como campo de login (`USERNAME_FIELD = "email"`).
+- **Por que estende `AbstractUser`?** Herda gratuitamente: hash de senha, `is_active`, `is_staff`, `date_joined`, `last_login`, grupos e permissões. Evita reescrever auth do zero.
+- **`REQUIRED_FIELDS = []`** — sem campos obrigatórios além do email para `createsuperuser`.
+- **`UserManager`** customizado: `create_user(email, password)` preenche `username` com o próprio email, tornando o campo `username` transparente para o sistema.
+- **`display_name`** (property): retorna `first_name last_name` ou o prefixo do email — usado na navbar.
+- **Relacionamentos:** 1:1 com `Profile`; raiz de tudo que é "por usuário".
+- **Impacto:** `AUTH_USER_MODEL = "accounts.User"` em `base.py` — todas as FKs do sistema apontam para este model.
+
+### `Profile`
+- **Função:** dados de estudo separados da identidade (concurso-alvo, meta diária, nível, bio, avatar).
+- **Por que separado do `User`?** Mantém o `User` focado em auth; `Profile` pode evoluir sem mexer na autenticação.
+- **Criado automaticamente** via signal `post_save` — nunca fica órfão.
+- **Relacionamentos:** `OneToOneField(User, CASCADE)` com `related_name="profile"` → acesso via `user.profile`.
+
+### `BaseModel` (`apps.core`)
+- **Função:** classe-pai abstrata com `id` (UUID4), `created_at` e `updated_at`.
+- **Por que UUID?** IDs não sequenciais e seguros de expor em URLs; facilitam merge entre ambientes.
+- **`abstract = True`** — não cria tabela própria; cada filho herda os campos.
+
+## Services criados
+
+### `UserService`
+- **Responsabilidade:** toda a regra de negócio de usuário (registro e atualização de perfil).
+- **Por que existe?** Views não podem manipular models diretamente — a Service Layer garante que a lógica seja testável sem HTTP e reutilizável.
+
+**`UserService.register(form, request)`**
+- Pega o form já validado.
+- Cria o `User` sem salvar (`commit=False`), define `username = email`, chama `set_password()` (hash seguro), salva.
+- O signal `post_save` cria o `Profile` automaticamente.
+- Chama `login(request, user)` → sessão iniciada imediatamente após o cadastro.
+- Envolto em `@transaction.atomic` — se qualquer passo falhar, nada é gravado.
+
+**`UserService.update_profile(user, form)`**
+- Salva as alterações do `Profile`.
+- Atualiza `first_name`/`last_name` no `User` via `update_fields` (query mínima).
+- Envolto em `@transaction.atomic`.
+
+## Views criadas
+
+Todas usam **Class-Based Views (CBV)** conforme arquitetura da Fase 1.
+
+| View | Tipo base | URL | O que faz |
+|---|---|---|---|
+| `RegisterView` | `FormView` | `/conta/cadastro/` | Exibe e processa o formulário de cadastro |
+| `LoginView` | `DjangoLoginView` | `/conta/login/` | Login por email/senha |
+| `LogoutView` | `LoginRequiredMixin + TemplateView` | `/conta/logout/` | GET mostra confirmação; POST desloga |
+| `ProfileView` | `LoginRequiredMixin + FormView` | `/conta/perfil/` | Exibe e salva edição de perfil |
+
+**Por que CBV?**
+- Reutilização via herança (ex.: `LoginView` herda do `DjangoLoginView` do Django, ganhando proteção CSRF e rate limiting gratuitamente).
+- Separação de GET/POST estruturada (`get`, `form_valid`, `form_invalid`).
+- `LoginRequiredMixin` aplicado como herança — não repete `@login_required` em todo método.
+
+**`redirect_authenticated_user = True`** no `LoginView` → usuário logado que acessa `/login/` é redirecionado automaticamente, sem exibir o form.
+
+## Templates criados
+
+### `base.html`
+- Layout global com navbar Bootstrap 5 (visível só para usuários logados).
+- Renderiza o bloco de `{% if messages %}` — feedback de ações (sucesso, erro, info).
+- Navbar responsiva com `navbar-toggler` → funciona em mobile.
+- Botão "Sair" é um `<form method="post">` com CSRF — logout nunca via GET (segurança).
+
+### `base_auth.html`
+- Layout minimalista para telas de autenticação: card branco centralizado na tela.
+- Herda de `base.html`? **Não** — deliberadamente não usa a navbar, pois o usuário ainda não está logado.
+- Exibe logo, título e o block `{% card_content %}`.
+
+### Padrão de exibição de erros nos templates
+- Cada campo exibe `{{ form.campo.errors.0 }}` com classe `invalid-feedback d-block` — sem JavaScript, funciona com validação server-side pura.
+- `{% if form.non_field_errors %}` captura erros que não pertencem a um campo específico (ex.: "As senhas não coincidem").
+
+## Testes criados
+
+**`tests/unit/test_user_service.py`** — 5 testes
+
+| Teste | O que valida |
+|---|---|
+| `test_cria_usuario_com_email_como_username` | email vira username; senha faz hash |
+| `test_cria_profile_automaticamente` | signal funciona; `user.profile` existe |
+| `test_email_duplicado_invalida_form` | clean_email detecta duplicata |
+| `test_senhas_diferentes_invalida_form` | clean() detecta mismatch |
+| `test_atualiza_perfil` | salva profile + first_name/last_name |
+
+**`tests/integration/test_auth_views.py`** — 13 testes
+
+Cobrem: GET/POST de cada view, redirecionamento de usuário já logado, credenciais inválidas, proteção `LoginRequired`, e persistência real no banco.
+
+**Resultado:** `18 passed` em 0.31s.
+
+## Fluxo completo — como os dados percorrem o sistema
+
+### Cadastro
+```
+1. Usuário acessa /conta/cadastro/  →  RegisterView.get()
+2. Django renderiza register.html com RegisterForm vazio
+3. Usuário preenche e submete
+4. RegisterView.post() → form.is_valid()
+     ├── clean_email(): verifica duplicata
+     └── clean(): verifica senhas iguais
+5. form_valid() → UserService.register(form, request)
+     ├── User criado com set_password() (PBKDF2 + salt)
+     ├── signal post_save → Profile criado automaticamente
+     └── login(request, user) → sessão iniciada
+6. Redirect para /conta/perfil/ com mensagem de sucesso
+```
+
+### Login
+```
+1. Usuário acessa /conta/login/  →  LoginView (herda DjangoLoginView)
+2. POST com email + senha
+3. Django autentica via UserManager (busca por email)
+4. Sessão criada; redirect para /conta/perfil/
+```
+
+### Edição de Perfil
+```
+1. Usuário acessa /conta/perfil/  (requer login)
+2. ProfileView.get() → form com instance=user.profile + initial do User
+3. POST → form_valid() → UserService.update_profile(user, form)
+     ├── profile.save()
+     └── user.save(update_fields=["first_name", "last_name"])
+4. Redirect para /conta/perfil/ com mensagem de sucesso
+```
+
+## Decisões arquiteturais
+
+### Por que `email` como `USERNAME_FIELD` e não `username`?
+O sistema é monodomínio (preparação para um concurso específico); o email é o identificador natural do usuário, não requer escolha de username e evita colisões. É mais amigável e segue o padrão de produtos modernos.
+
+### Por que criar `UserManager` customizado?
+O `BaseUserManager` do Django não sabe que nosso `USERNAME_FIELD = "email"`. Sem o manager customizado, `create_user()` exige `username` como 1º argumento — o que geraria confusão. O manager customizado encapsula essa lógica e torna `create_user(email, password)` a API natural.
+
+### Por que `signal post_save` para criar o `Profile`?
+Garante que **toda** criação de `User` — seja pelo cadastro, pelo admin, por fixtures de teste ou por scripts — gere um `Profile` automaticamente. A alternativa (criar no service) só funcionaria para o fluxo normal de cadastro, deixando outros pontos de criação vulneráveis à ausência de perfil.
+
+**Alternativa considerada:** `get_or_create` nas views. **Rejeitada:** cada view precisaria verificar a existência do profile — código repetido e frágil.
+
+### Por que `LogoutView` via POST e não GET?
+Logout via GET é uma vulnerabilidade de segurança (CSRF logout attack): um link em qualquer site poderia deslogar o usuário. POST exige token CSRF — apenas o próprio sistema pode deslogar o usuário.
+
+### Por que `LoginRequiredMixin` via herança (CBV) e não `@login_required` (FBV)?
+Em CBV, `@login_required` precisaria ser aplicado no `dispatch` manualmente ou via decorador de classe (`method_decorator`). Herdar `LoginRequiredMixin` é mais limpo, explícito no nível da classe e funciona com todas as views que herdam dela.
+
+### Por que `base_auth.html` separado do `base.html`?
+Telas de autenticação não têm navbar (o usuário ainda não está logado). Um template separado evita herdar estrutura desnecessária e simplifica o layout centrado. É o padrão de produtos como GitHub, Notion e Linear.
+
+## Explicação educacional
+
+Imagine que você é um desenvolvedor júnior e nunca viu este código.
+
+**O `User` estende `AbstractUser`** porque o Django já tem tudo que precisamos — hash de senha, sessões, permissões — e só queremos mudar o campo de login para email. É como herdar de uma classe e sobrescrever apenas o que precisa mudar.
+
+**O `Profile` existe separado** porque misturar "quem você é" (email, senha) com "como você estuda" (concurso-alvo, meta diária) num modelo só violaria o princípio de responsabilidade única — e tornaria difícil evoluir um sem mexer no outro.
+
+**O `UserService` existe** porque a view não deve saber como criar um usuário. A view só sabe que "o formulário foi válido, chama o service". O service sabe "preciso criar o user, fazer hash da senha, criar a sessão". Assim cada parte tem uma responsabilidade clara.
+
+**O signal `post_save`** é como um gatilho automático: toda vez que um `User` é salvo pela primeira vez (`created=True`), o Django dispara esse sinal, e o handler cria o `Profile`. O desenvolvedor que usa o sistema não precisa lembrar de criar o perfil — acontece automaticamente.
+
+**O `LoginRequiredMixin`** é como uma porta com crachá: qualquer view que o herda automaticamente exige que o usuário esteja logado. Se não estiver, é redirecionado para `/conta/login/` antes mesmo de a view rodar.
+
+## Perguntas de entrevista
+
+**P1. Por que usar CBV em vez de FBV nesta fase?**
+R: CBV permite herança — `RegisterView(FormView)` ganha `form_valid`, `form_invalid` e `get_form_kwargs` prontos. `LoginView(DjangoLoginView)` herda proteção CSRF e autenticação já implementadas. A mesma lógica em FBV exigiria mais boilerplate. Para operações CRUD padronizadas, CBV é mais expressivo.
+
+**P2. O que é `USERNAME_FIELD` no Django e por que mudamos para email?**
+R: É o campo usado para identificação no login (`authenticate(request, username=..., password=...)`). Por padrão é `"username"`. Mudando para `"email"`, o Django usa email como identificador em todo o sistema de auth — AuthenticationForm, `authenticate()`, `createsuperuser`. É mais natural para usuários finais.
+
+**P3. Por que `transaction.atomic` nos métodos do service?**
+R: Garante atomicidade. Em `register`, o User é criado e a sessão é iniciada — se o login falhasse, o User não deveria ter sido criado. O `@transaction.atomic` envolve tudo numa única transação de banco: sucesso total ou rollback total.
+
+**P4. O que é o `post_save` signal e quando ele executa?**
+R: É um sinal que o Django dispara depois de qualquer chamada ao `save()` de um model. O `created` boolean indica se foi criação (True) ou atualização (False). Usamos para criar o `Profile` toda vez que um `User` novo é salvo — independentemente de onde o User foi criado.
+
+**P5. Por que o `LoginView` usa `redirect_authenticated_user = True`?**
+R: UX e segurança. Um usuário já logado não deve ver o formulário de login — seria confuso. Essa flag faz o Django redirecionar automaticamente para `LOGIN_REDIRECT_URL` se o usuário já estiver autenticado.
+
+**P6. Como funciona a hierarquia `base.html` → `base_auth.html` → `login.html`?**
+R: É herança de templates Django. `login.html` estende `base_auth.html` que tem o card centralizado. `base_auth.html` não estende `base.html` — é um layout completamente independente para as telas de autenticação. Cada nível sobrescreve blocos (`{% block card_content %}`).
+
+**P7. Por que o `UserManager` foi necessário?**
+R: Ao mudar `USERNAME_FIELD = "email"`, a assinatura esperada de `create_user()` muda, mas o `BaseUserManager` não sabe disso — ele ainda espera o campo padrão `username` como primeiro argumento. O `UserManager` customizado define `create_user(email, password)` explicitamente e preenche `username` automaticamente com o email.
+
+## O que aprendi nesta fase
+
+**Django:**
+- `AbstractUser` vs `AbstractBaseUser` — quando usar cada um.
+- `USERNAME_FIELD` e `REQUIRED_FIELDS` para customizar o modelo de usuário.
+- `BaseUserManager` e como criar um manager customizado.
+- Signals Django (`post_save`, `@receiver`) e o papel do `apps.py.ready()`.
+- `LoginRequiredMixin` em CBV.
+- `AuthenticationForm` e como o `LoginView` do Django funciona internamente.
+- Herança de templates (`{% extends %}`), `{% block %}` e layouts reutilizáveis.
+- `messages` framework para feedback pós-redirect.
+- `update_fields` em `save()` para queries mínimas.
+
+**PostgreSQL / banco:**
+- UUID como PK via `models.UUIDField(default=uuid4, editable=False)`.
+- `OneToOneField` com `CASCADE` — apagar User apaga Profile junto.
+- `unique=True` em `email` — constraint de banco que garante unicidade.
+- Migrations: `makemigrations` gera arquivos de migração; `migrate` aplica ao banco.
+
+**Python:**
+- Decoradores de método vs herança de mixin.
+- `commit=False` em forms para instanciar o objeto sem gravar.
+- `@transaction.atomic` como context manager ou decorador.
+
+**Arquitetura:**
+- Separação View → Service → Model.
+- Service Layer como camada testável sem HTTP.
+- Signal como mecanismo de desacoplamento (Profile não sabe quem o criou).
+- Por que logout por POST protege contra CSRF.
+
+**Testes:**
+- `pytest.mark.django_db` para acesso ao banco em testes.
+- `client.force_login(user)` para simular usuário autenticado sem passar por views de login.
+- Fixtures do pytest (`@pytest.fixture`) e sua reutilização entre testes.
+- Testar redirecionamentos: `assert r.status_code == 302` + `r.url`.
+- `MagicMock()` para simular o `request` em testes unitários de service.
+
+## Resumo executivo
+
+A Fase 4 scaffoldou o projeto Django completo (settings por ambiente, URLs, apps, Docker-ready) e implementou o módulo de autenticação: **User com email como login**, **Profile criado automaticamente via signal**, **4 views CBV** (cadastro, login, logout com confirmação, perfil), **UserService** isolando a regra de negócio, **5 templates Bootstrap 5 responsivos** e **18 testes (5 unitários + 13 integração) passando em 0.31s**. A decisão-chave foi o `UserManager` customizado para tornar `email` o identificador natural do sistema sem perder as conveniências do `AbstractUser`.
+
+---
+
+> **Próxima fase:** Fase 5 — Banco de Questões.
+
+---
+---
+
+# FASE 5 — Banco de Questões
+
+## Objetivo
+
+Permitir que o usuário **resolva questões por disciplina, tópico e quantidade**, receba o gabarito comentado ao finalizar e veja seu resultado com acertos, erros e percentual.
+
+## Problema que a fase resolve
+
+O banco com 800 questões está no PostgreSQL (Fase 3), mas é inacessível ao usuário. Esta fase cria o fluxo completo de **treino**: filtrar → resolver → ver resultado. É o núcleo funcional do produto.
+
+## Arquivos criados
+
+```
+apps/exams/
+├── __init__.py
+├── apps.py
+├── models.py         ← Quiz, QuizQuestion, UserAnswer
+├── forms.py          ← QuizFilterForm
+├── views.py          ← FilterView, PlayQuizView, ResultView
+├── urls.py           ← /questoes/ namespace="exams"
+├── migrations/
+│   └── 0001_initial.py
+└── services/
+    ├── __init__.py
+    └── quiz_service.py   ← QuizService + QuizResult
+
+apps/questions/services/
+└── question_service.py   ← QuestionService
+
+templates/exams/
+├── filter.html       ← formulário de filtro
+├── play.html         ← resolução das questões
+└── result.html       ← gabarito comentado
+
+tests/unit/test_quiz_service.py          ← 10 testes
+tests/integration/test_exam_views.py     ← 11 testes
+```
+
+## Arquivos modificados
+
+- `config/settings/base.py` — `apps.exams` adicionado a `INSTALLED_APPS`.
+- `config/urls.py` — `path("questoes/", ...)` adicionado.
+
+## Models criados
+
+### `Quiz`
+- **Função:** representa uma sessão de resolução — treino ou simulado — criada para um usuário.
+- **Por que existe?** Agrupa as questões sorteadas e rastreia o estado (`in_progress` → `finished`). Sem ele, não há como saber quais questões o usuário deve responder nem se já terminou.
+- **Campos-chave:** `user` (FK), `subject` (FK, nullable), `topic` (FK, nullable), `quiz_type` (`practice`/`simulated`), `status` (`in_progress`/`finished`), `quantity`, `started_at`, `finished_at`.
+- **Relacionamentos:** `user` → N:1 com `User`; `subject`/`topic` → N:1 com as entidades de conteúdo; 1:N com `QuizQuestion` e `UserAnswer`.
+- **Impacto:** ponto de entrada para a Fase 8 (Simulados) — o mesmo model suportará o modo `simulated` com distribuição de disciplinas.
+
+### `QuizQuestion` (tabela de junção)
+- **Função:** liga `Quiz` ↔ `Question` com **ordem** de exibição.
+- **Por que não M:M direto?** Um M:M nativo no Django não carrega atributos extras. `QuizQuestion` guarda `order`, que define a sequência das questões no treino.
+- **Constraints:** UNIQUE `(quiz, question)` — a mesma questão não aparece duas vezes; UNIQUE `(quiz, order)` — sem buracos ou duplicatas de ordem.
+- **Relacionamentos:** N:1 com `Quiz` (CASCADE) e `Question` (PROTECT).
+
+### `UserAnswer`
+- **Função:** registra a resposta do usuário a cada questão dentro de um quiz.
+- **`is_correct`** é calculado e **persistido no momento do submit** — não recalculado depois. Se o gabarito mudar no futuro, o histórico do usuário permanece fiel ao que era verdade quando ele respondeu.
+- **`selected_alternative = None`** = questão pulada → conta como errada.
+- **Constraint:** UNIQUE `(quiz, question)` — responde cada questão apenas uma vez por quiz.
+
+## Services criados
+
+### `QuestionService` (`apps/questions/services/question_service.py`)
+- **Responsabilidade:** consultas ao banco de questões — filtrar, contar, sortear.
+- **Fluxo de `get_practice_questions`:**
+  1. Filtra `Question.objects` por `subject_id` e `is_active=True`.
+  2. Se `topic_id` fornecido, adiciona filtro por tópico.
+  3. `.order_by("?")` → ordem aleatória (PostgreSQL usa `ORDER BY RANDOM()`).
+  4. `[:quantity]` → slicing limita ao número pedido.
+  5. Retorna QuerySet com `prefetch_related("alternatives")`.
+- **Por que separado do `QuizService`?** Responsabilidade única: `QuestionService` só sabe buscar questões; `QuizService` sabe criar e gerenciar quizzes.
+
+### `QuizService` (`apps/exams/services/quiz_service.py`)
+- **Responsabilidade:** criar quizzes, receber respostas e calcular resultados.
+
+**`create_practice_quiz(user, subject_id, topic_id, quantity)`**
+1. Busca questões via `QuestionService.get_practice_questions()`.
+2. Cria `Quiz` com status `in_progress`.
+3. `bulk_create` dos `QuizQuestion` com ordem sequencial.
+4. Retorna o `Quiz` criado.
+5. Tudo em `@transaction.atomic`.
+
+**`submit_answers(quiz, raw_answers)`**
+1. Verifica se o quiz já está `finished` → pula se sim (idempotência).
+2. Para cada `QuizQuestion`, busca a alternativa selecionada no dict `raw_answers`.
+3. Valida que a alternativa pertence à questão (segurança).
+4. Calcula `is_correct` via `alternative.is_correct`.
+5. `bulk_create` de todos os `UserAnswer`.
+6. Marca `quiz.finished_at` e `quiz.status = finished`.
+7. Tudo em `@transaction.atomic`.
+
+**`get_result(quiz)`**
+1. Busca `QuizQuestion` ordenado por `order` com `select_related` e `prefetch_related`.
+2. Busca todos os `UserAnswer` do quiz num dict `{question_id: UserAnswer}`.
+3. Monta lista `items` com: questão, alternativas, resposta selecionada, `is_correct`, `is_skipped`.
+4. Calcula totais e percentual.
+5. Retorna `QuizResult` dataclass.
+
+### `QuizResult` (dataclass)
+- **Função:** objeto de transferência do resultado — `total`, `correct`, `wrong`, `skipped`, `percentage`, `items`.
+- **Por que dataclass?** Imutável, tipado, sem dependência de ORM — fácil de serializar e testar.
+
+## Views criadas
+
+| View | Tipo base | URL | O que faz |
+|---|---|---|---|
+| `FilterView` | `LoginRequiredMixin + FormView` | `GET/POST /questoes/` | Mostra filtros; no POST cria o quiz e redireciona |
+| `PlayQuizView` | `LoginRequiredMixin + TemplateView` | `GET/POST /questoes/treino/<uuid>/` | GET exibe questões; POST submete respostas |
+| `ResultView` | `LoginRequiredMixin + TemplateView` | `GET /questoes/resultado/<uuid>/` | Exibe gabarito comentado |
+
+**Segurança:** `_get_quiz_for_user(quiz_id, user)` verifica que o quiz pertence ao usuário logado — retorna 404 se outro usuário tentar acessar.
+
+**Tratamento de estado:** quiz `finished` em `PlayQuizView` → redirect automático para resultado; quiz `in_progress` em `ResultView` → redirect automático para play.
+
+## Templates criados
+
+### `filter.html`
+- Card Bootstrap com `<select>` de disciplinas (populado do banco), `<select>` de tópicos e `<input type="radio">` para quantidade.
+- **JavaScript mínimo** (inline): filtra as opções do select de tópicos conforme a disciplina selecionada, usando `data-subject` nos `<option>`. Zero dependências externas.
+
+### `play.html`
+- Exibe **todas as questões em página única** (como uma prova em papel).
+- Cada questão: badge com número, texto e `<input type="radio" name="q_{question_id}" value="{alternative_id}">`.
+- Texto-base de Português exibido em alerta acima da questão se `context_text` presente.
+- Botão "Finalizar" com `confirm()` para evitar submit acidental.
+- Navegação rápida por número de questão (âncoras) — útil no mobile.
+
+### `result.html`
+- Card de resumo: ícone de troféu/smile/frown por faixa de percentual, barra de progresso colorida, badges de acertos/erros/puladas.
+- Lista de questões: verde (acerto), vermelho (erro), cinza (pulada).
+- Para cada questão: alternativas com ícone ✓ (correta) / ✗ (selecionada e errada) / ○ (demais).
+- Bloco de explicação (`question.explanation`) ao final de cada questão.
+
+## Fluxo completo
+
+```
+1. Usuário acessa /questoes/                    → FilterView.get()
+2. Escolhe Disciplina, Tópico (opt.), Quantidade → FilterView.post()
+3. QuizService.create_practice_quiz()
+   ├── QuestionService.get_practice_questions()  → ORDER BY RANDOM() LIMIT N
+   ├── Quiz criado (status=in_progress)
+   └── bulk_create QuizQuestion (com ordem)
+4. Redirect para /questoes/treino/<uuid>/       → PlayQuizView.get()
+   └── Exibe N questões com radio buttons
+5. Usuário responde e clica "Finalizar"          → PlayQuizView.post()
+   └── QuizService.submit_answers()
+       ├── Para cada questão: verifica alt selecionada, calcula is_correct
+       ├── bulk_create UserAnswer
+       └── quiz.status = finished
+6. Redirect para /questoes/resultado/<uuid>/    → ResultView.get()
+   └── QuizService.get_result()
+       ├── 2 queries otimizadas (select_related + prefetch_related)
+       └── Monta QuizResult com items
+7. Exibe resumo + gabarito comentado
+```
+
+## Decisões arquiteturais
+
+### Por que exibir todas as questões em uma página em vez de uma por vez?
+**Escolhido:** todas na mesma página (como uma prova de papel). Simples, sem JS complexo, sem estado de sessão, sem paginação. O usuário pode rolar, voltar e mudar respostas antes de finalizar.
+
+**Alternativa:** uma questão por vez com HTMX (avança/volta sem reload). **Rejeitada para Fase 5** — adiciona complexidade de estado de progresso, é difícil de testar e não está previsto na Fase 8. Pode ser adicionado na Fase 9 (qualidade).
+
+### Por que `ORDER BY RANDOM()` e não shuffle em Python?
+`ORDER BY ?` (Django) → `ORDER BY RANDOM()` (PostgreSQL). O banco faz o sort antes de retornar as linhas — o slice `[:quantity]` já pega as N aleatórias. Em Python precisaríamos carregar todas e depois fazer `random.sample()`. O banco é mais eficiente para isso.
+
+**Trade-off:** `ORDER BY RANDOM()` tem custo O(N) no banco. Para 800 questões é desprezível; para 800.000 questões seria revisto.
+
+### Por que `bulk_create` para `QuizQuestion` e `UserAnswer`?
+`QuizQuestion.objects.bulk_create([...])` faz **uma única query INSERT** independentemente de quantas questões. Sem `bulk_create`, seriam N queries (10, 20 ou 50 INSERTs). Para `UserAnswer` o ganho é idêntico.
+
+### Por que `_get_quiz_for_user` helper em vez de `get_object_or_404(Quiz, pk=pk, user=user)`?
+Ambos funcionam. O helper torna o código das views mais legível e centraliza a lógica de autorização num só lugar — se a regra mudar (ex.: admin pode ver qualquer quiz), muda em um ponto.
+
+### Por que `QuizResult` como dataclass e não dict?
+Tipagem, autocompletar, testabilidade. `result.correct` é mais legível que `result["correct"]`, e o dataclass valida os campos na criação.
+
+## Explicação educacional
+
+Imagine que você nunca viu este código.
+
+**O `Quiz`** é como uma folha de prova gerada especificamente para você naquele momento. Ele registra quais questões você tem para responder e se você já terminou.
+
+**O `QuizQuestion`** é a tabela de junção que diz "a questão X está na posição 3 dessa folha de prova". Sem ela, você saberia que a questão está na prova, mas não em qual ordem.
+
+**O `UserAnswer`** é onde você escreve sua resposta na folha. Se deixou em branco, o campo `selected_alternative` fica `null`, o que conta como errado.
+
+**O `QuestionService`** é o professor que escolhe as questões aleatoriamente. Ele não sabe nada sobre provas — só sabe buscar questões com os filtros que você pedir.
+
+**O `QuizService`** é o coordenador de provas. Ele pede as questões pro professor (`QuestionService`), monta a prova (`Quiz` + `QuizQuestion`), recebe as respostas, corrige e gera o gabarito.
+
+**A `FilterView`** é a tela inicial: você escolhe a matéria, o tópico e quantas questões. Quando envia o formulário, o coordenador monta sua prova e você vai para a sala de provas.
+
+**A `PlayQuizView`** é a sala de provas: você vê todas as questões, marca suas respostas e quando clica em "Finalizar" o sistema corrige tudo de uma vez.
+
+**A `ResultView`** é o gabarito: mostra o que você acertou (verde), errou (vermelho) e pulou (cinza), com a explicação de cada questão.
+
+## Perguntas de entrevista
+
+**P1. Por que usar `bulk_create` em vez de salvar cada objeto num loop?**
+R: `bulk_create` faz **uma única query INSERT** com múltiplos valores, independente de quantos objetos. Um loop faria N queries ao banco — uma por objeto. Para 50 questões numa sessão de treino, a diferença entre 1 e 50 queries é 49x mais I/O. `bulk_create` é essencial para qualquer insert em lote.
+
+**P2. O que é `select_related` e `prefetch_related`? Qual a diferença?**
+R: Ambos evitam o problema N+1 (fazer uma query extra por objeto).
+- `select_related` usa JOIN SQL — ideal para FKs (1:1 e N:1). Tudo numa query.
+- `prefetch_related` faz uma query separada por relacionamento reverso (1:N, M:N) e une em Python. Ideal para `question.alternatives`.
+Usar os dois juntos num prefetch profundo (`select_related("question__subject").prefetch_related("question__alternatives")`) é a combinação padrão para evitar N+1 em listas.
+
+**P3. O que é o problema N+1 e como esta fase o evita?**
+R: N+1 ocorre quando você faz 1 query para buscar N objetos e depois N queries para buscar dados relacionados (uma por objeto). No `get_result`, sem `prefetch_related("question__alternatives")`, cada questão faria uma query para buscar suas 4 alternativas — 50 questões = 50 queries extras. Com `prefetch_related`, são 2 queries no total.
+
+**P4. Por que `@transaction.atomic` no `submit_answers`?**
+R: Atomicidade. Se o `bulk_create` de `UserAnswer` falhar no meio (ex.: constraint violation), a transação faz rollback e o quiz não fica com status `finished` sem respostas gravadas. É tudo-ou-nada: ou todas as respostas são salvas E o quiz é marcado como finalizado, ou nada acontece.
+
+**P5. Por que `is_correct` é calculado no submit e não recalculado toda vez?**
+R: Imutabilidade do histórico. Se o gabarito de uma questão for corrigido depois, as respostas antigas do usuário não devem mudar retroativamente — isso distorceria as estatísticas de evolução. O valor gravado no momento do submit representa a verdade daquele instante.
+
+**P6. Como funciona o sorteio aleatório das questões?**
+R: `Question.objects.filter(...).order_by("?")` traduz para `ORDER BY RANDOM()` no PostgreSQL. O banco ordena aleatoriamente as linhas elegíveis antes de retornar. O slice `[:quantity]` então pega as N primeiras da lista aleatória.
+
+**P7. Por que verificar `quiz.user == request.user` nas views?**
+R: Autorização a nível de objeto. O Django protege rotas com `LoginRequiredMixin` (autenticação), mas não sabe que um quiz pertence a um usuário específico. Sem essa verificação, qualquer usuário logado poderia acessar `/questoes/treino/<uuid-de-outro-usuario>/` e ver ou submeter respostas no quiz alheio.
+
+## O que aprendi nesta fase
+
+**Django:**
+- `FormView` com `form_valid()` para lógica pós-validação.
+- `TemplateView` com GET e POST explícitos via `get()` e `post()`.
+- `get_object_or_404` com múltiplos filtros para autorização.
+- `select_related` vs `prefetch_related` — quando e por que usar cada um.
+- `unique_together` em models — constraints de banco via ORM.
+- `PROTECT` em FK — impede deleção de questões com histórico de resposta.
+- `update_fields=["status", "finished_at"]` — update parcial eficiente.
+
+**PostgreSQL:**
+- `ORDER BY RANDOM()` para sorteio aleatório.
+- `bulk_create` → único INSERT com múltiplas linhas (`INSERT INTO ... VALUES (...), (...), ...`).
+- Índices compostos `(user, status)` para queries de listagem.
+
+**Python:**
+- `@dataclass` para objetos de transferência imutáveis e tipados.
+- Dict comprehension `{ua.question_id: ua for ua in ...}` para lookup O(1).
+- `str(uuid)` vs `uuid` — cuidado com tipos ao comparar PKs de model.
+
+**Arquitetura:**
+- Separação `QuestionService` (busca) vs `QuizService` (orquestração).
+- Padrão "helper de autorização" (`_get_quiz_for_user`) centralizando segurança.
+- Máquina de estados simples no model (`in_progress` → `finished`).
+- Resultado como dataclass (objeto de transferência) em vez de dict.
+
+**Testes:**
+- Fixtures compostas (fixture `quiz` depende de `user`, `subject`, `questions`).
+- Testar segurança: outro usuário deve receber 404.
+- Testar idempotência: submit de quiz já finalizado não duplica respostas.
+- Testar casos de borda: quantidade pedida maior que disponível, questões puladas.
+
+## Resumo executivo
+
+A Fase 5 entregou o fluxo completo de treino: **filtrar → resolver → ver resultado**. Criou o app `exams` com os models `Quiz`, `QuizQuestion` e `UserAnswer`; o `QuizService` com criação, submit e resultado; o `QuestionService` para sorteio aleatório; 3 templates Bootstrap 5 responsivos; e **21 testes novos (10 unitários + 11 integração)**, totalizando **54 testes passando** na suíte completa. Decisões-chave: `bulk_create` para performance, `ORDER BY RANDOM()` para sorteio, `is_correct` persistido no submit para integridade do histórico, e verificação de dono do quiz para segurança.
+
+---
+
+> **Próxima fase:** Fase 7 — Estatísticas e Pontos Fracos.
+
+---
+---
+
+# FASE 6 — Dashboard
+
+## Objetivo
+
+Exibir uma **visão consolidada da evolução do usuário**: total de questões respondidas, acertos, erros, aproveitamento geral, sequência de dias de estudo (streak), progresso da meta diária e desempenho por disciplina.
+
+## Problema que a fase resolve
+
+O banco de questões (Fase 5) já gera dados de desempenho via `UserAnswer` e `Quiz`, mas esses dados estão dispersos no banco — o usuário não tem onde ver sua evolução. O dashboard cria o **ponto de entrada principal** do sistema: a tela que o usuário vê ao logar e que responde "como estou indo?".
+
+## Arquivos criados
+
+```
+apps/dashboard/
+├── __init__.py
+├── apps.py
+├── views.py          ← DashboardView (LoginRequired + TemplateView)
+├── urls.py           ← / namespace="dashboard"
+└── services/
+    ├── __init__.py
+    └── dashboard_service.py  ← DashboardService + DashboardStats + SubjectStat
+
+templates/dashboard/
+└── home.html         ← layout responsivo com cards, barras e treinos recentes
+
+tests/
+├── unit/test_dashboard_service.py      ← 11 testes
+└── integration/test_dashboard_views.py ← 7 testes
+```
+
+## Arquivos modificados
+
+- `config/settings/base.py` — `apps.dashboard` adicionado a `INSTALLED_APPS`.
+- `config/urls.py` — `path("", ...)` adicionado como raiz.
+- `templates/base.html` — navbar atualizada: brand → `dashboard:home`; links "Dashboard" e "Questões" adicionados.
+- `docs/PROJECT_EXPLAINED.md` — status de fases 4, 5 e 6 corrigidos para ✅.
+
+## Classes criadas
+
+### `SubjectStat` (dataclass)
+- **Função:** representa o desempenho de um usuário em uma disciplina específica — nome, cor, total respondido, total correto e percentual.
+- **Por que existe?** Desacopla o resultado da query ORM da camada de apresentação. O template recebe um objeto tipado em vez de um dict com chaves longas como `question__subject__name`.
+
+### `DashboardStats` (dataclass)
+- **Função:** objeto de transferência com todas as métricas do dashboard.
+- **Campos:**
+
+| Campo | Tipo | Descrição |
+|---|---|---|
+| `total_answered` | int | Total de questões respondidas (todos os quizzes) |
+| `total_correct` | int | Total de acertos |
+| `total_wrong` | int | Total de erros |
+| `total_quizzes` | int | Quantidade de treinos finalizados |
+| `streak` | int | Sequência atual de dias consecutivos de estudo |
+| `overall_percentage` | int | Aproveitamento geral (arredondado) |
+| `subject_stats` | list[SubjectStat] | Desempenho por disciplina, ordenado por volume |
+| `daily_goal` | int | Meta diária de questões (do perfil do usuário) |
+| `today_answered` | int | Questões respondidas hoje |
+| `today_remaining` | int | Faltam N questões para a meta de hoje |
+| `daily_goal_percentage` | int | % da meta diária atingida (cap 100) |
+| `recent_quizzes` | list | Últimos 5 treinos finalizados (anotados) |
+
+### `DashboardService`
+- **Responsabilidade:** calcular todas as métricas em queries otimizadas e retornar `DashboardStats`.
+- **Por que existe?** A view não deve fazer queries — ela chama um service e repassa ao template.
+
+**`get_stats(user) → DashboardStats`**
+1. Uma query `aggregate` no `UserAnswer` filtrando por `quiz__user=user` → obtém `total` e `correct` num único round-trip.
+2. `COUNT` no `Quiz` com `status=FINISHED` → `total_quizzes`.
+3. `_compute_streak(user)` → streak.
+4. `VALUES + ANNOTATE` no `UserAnswer` agrupando por disciplina → `subject_stats`.
+5. `COUNT` no `UserAnswer` com `answered_at__date=today` → `today_answered`.
+6. `ANNOTATE(correct_count, wrong_count)` nos últimos 5 quizzes → `recent_quizzes`.
+
+**`_compute_streak(user) → int`**
+1. Busca datas únicas de `Quiz.finished_at` em ordem decrescente via `.dates("finished_at", "day")`.
+2. Se a data mais recente for mais de 1 dia atrás → `return 0` (streak quebrado).
+3. Caminha a lista contando dias consecutivos a partir da data mais recente.
+- **Regra:** streak válido se o usuário estudou **hoje ou ontem**. Assim a sequência sobrevive durante o dia atual mesmo que o usuário ainda não tenha estudado hoje.
+
+## Views criadas
+
+| View | Tipo base | URL | O que faz |
+|---|---|---|---|
+| `DashboardView` | `LoginRequiredMixin + TemplateView` | `GET /` | Chama `DashboardService.get_stats()` e renderiza o template |
+
+## Template criado
+
+### `dashboard/home.html`
+
+Estrutura em três blocos condicionais:
+
+**Estado vazio** (`total_answered == 0`): saudação, ícone de formatura e botão "Começar primeiro treino".
+
+**Métricas principais** (4 cards em grade 2×2 mobile / 4 colunas desktop):
+- Respondidas (azul), Acertos (verde), Erros (vermelho), Aproveitamento % (cor dinâmica: verde ≥70%, amarelo ≥50%, vermelho <50%).
+
+**Métricas secundárias** (3 cards):
+- 🔥 Streak com mensagem de incentivo quando zero.
+- Treinos realizados.
+- Meta diária: barra de progresso com badges `hoje_respondidas/meta` e texto "Meta atingida!" ou "Faltam N questões".
+
+**Desempenho por disciplina** (grade 2 colunas desktop): para cada disciplina, nome + `correto/total — %` e barra colorida com a cor cadastrada na disciplina.
+
+**Treinos recentes** (lista): até 5 treinos com disciplina, data, badges de acertos/erros e link "Ver" para o gabarito.
+
+## Fluxo completo
+
+```
+1. Usuário acessa /                  → DashboardView.get()
+2. LoginRequiredMixin verifica auth  → redireciona para /conta/login/ se não autenticado
+3. get_context_data()
+   └── DashboardService.get_stats(user)
+       ├── aggregate(total, correct) em UserAnswer    → 1 query
+       ├── count Quiz FINISHED                        → 1 query
+       ├── _compute_streak()                          → 1 query (.dates())
+       ├── values+annotate por disciplina             → 1 query
+       ├── count UserAnswer hoje                      → 1 query
+       └── annotate últimos 5 quizzes                 → 1 query
+4. Template renderizado com DashboardStats
+```
+
+**Total de queries por acesso:** 6 — independente do volume de dados do usuário.
+
+## Decisões arquiteturais
+
+### Por que calcular streak em Python e não SQL puro?
+A lógica de "dias consecutivos" envolve comparar a diferença entre datas sucessivas numa lista — isso é trivial em Python mas verboso em SQL puro (LAG, recursive CTE). A query `.dates()` busca apenas as datas únicas (uma por dia, sem repetição), que é um conjunto pequeno mesmo para usuários com meses de histórico. O loop Python é O(N) onde N = número de dias distintos de estudo.
+
+### Por que `aggregate` em vez de dois `count` separados?
+`aggregate(total=Count("id"), correct=Count("id", filter=...))` executa **uma única query SQL** com duas expressões de agregação. Dois `count()` separados fariam dois round-trips ao banco.
+
+### Por que `today_remaining` no dataclass em vez de calcular no template?
+Django templates não suportam aritmética (`daily_goal - today_answered`). Em vez de um template filter customizado, o valor é pré-computado no service — mantém a lógica no Python e o template limpo.
+
+### Por que a URL do dashboard é `"/"` (raiz)?
+O dashboard é a tela principal do sistema — faz sentido ser a URL raiz. `LOGIN_REDIRECT_URL = "dashboard:home"` já estava configurado na Fase 1 antecipando essa decisão.
+
+### Por que não usar `UserSubjectStat` (modelo de agregação da Fase 2)?
+O modelo `UserSubjectStat` foi planejado na Fase 2 como otimização futura para queries pesadas. Com 800 questões e um usuário, a query `VALUES + ANNOTATE` é instantânea — adicionar o modelo agora seria otimização prematura. Quando a Fase 7 (Estatísticas) exigir queries mais complexas, o modelo será introduzido.
+
+## Explicação educacional
+
+Imagine que você nunca viu este código.
+
+**O `DashboardService`** é como o contador que vai ao banco de dados, some todos os números e volta com um relatório pronto. A view não faz queries — ela só pede o relatório e passa para o template.
+
+**O `DashboardStats`** é o relatório em si: um objeto com todos os números que o template precisa. Por ser um `@dataclass`, é como um formulário preenchido — cada campo tem nome e tipo, é fácil de testar e não depende do ORM.
+
+**O `_compute_streak`** funciona como um calendário: pega a lista de dias em que você estudou, começa pelo mais recente, e conta para trás enquanto os dias forem consecutivos. Se o dia mais recente foi há mais de ontem, a sequência está quebrada (voltou a zero).
+
+**O `LoginRequiredMixin`** na view é a roleta de entrada: qualquer tentativa de acessar `/` sem estar logado é bloqueada e redirecionada para o login.
+
+**As 6 queries** são eficientes porque nunca carregam dados em Python para depois filtrar — todo o trabalho pesado (`COUNT`, `GROUP BY`, `ORDER BY`) é feito no PostgreSQL.
+
+## Perguntas de entrevista
+
+**P1. Como o dashboard evita o problema N+1?**
+R: Todas as métricas são calculadas com agregações no banco (`aggregate`, `annotate`, `count`) — nunca há loop em Python sobre objetos para contar ou somar. Os 5 treinos recentes usam `select_related("subject")` para evitar uma query extra por quiz ao acessar `quiz.subject.name`.
+
+**P2. Por que usar `@dataclass` para `DashboardStats` em vez de um `dict`?**
+R: Tipagem e legibilidade. `stats.total_correct` é mais claro que `stats["total_correct"]`, o `@dataclass` valida os campos na criação, e IDEs autocomplete os atributos. Além disso, testes podem asserir `stats.streak == 2` em vez de `stats.get("streak") == 2`.
+
+**P3. Como funciona o cálculo de streak?**
+R: `.dates("finished_at", "day")` retorna uma lista de datas únicas (sem duplicatas por dia) em ordem decrescente. O algoritmo verifica se a mais recente é hoje ou ontem (streak ativo). Depois percorre a lista contando dias consecutivos: se `date == expected`, incrementa e decrementa `expected` por um dia; se não, para.
+
+**P4. Por que `today_remaining` está no dataclass e não calculado no template?**
+R: Templates Django não suportam aritmética. `{{ stats.daily_goal - stats.today_answered }}` não funciona. A alternativa (filtro customizado `{% load dashboard_tags %}`) seria código extra desnecessário. Pré-calcular no service mantém o template limpo e o valor facilmente testável.
+
+**P5. O que muda na navbar da Fase 6?**
+R: A `brand` passou de `accounts:profile` para `dashboard:home` (agora o link mais importante). Foram adicionados links "Dashboard" e "Questões" na esquerda da navbar, seguindo o padrão de aplicações com múltiplas seções. O botão "Sair" permanece à direita.
+
+## O que aprendi nesta fase
+
+**Django:**
+- `QuerySet.aggregate()` com múltiplas expressões — uma query, vários resultados.
+- `QuerySet.values().annotate()` para `GROUP BY` em Python.
+- `Count("id", filter=Q(...))` — agregação condicional (equivale ao `COUNT(CASE WHEN ...)` do SQL).
+- `.dates("campo", "day")` para obter datas únicas de um DateTimeField.
+- `TemplateView.get_context_data()` como ponto único de injeção de dados no template.
+
+**PostgreSQL:**
+- `COUNT(CASE WHEN is_correct THEN 1 END)` via `Count(filter=Q(...))`.
+- `GROUP BY` via `.values().annotate()` — o Django gera o SQL correto automaticamente.
+
+**Python:**
+- `@dataclass` para objetos de transferência com múltiplos campos tipados.
+- Algoritmo de streak: lista de datas decrescentes + contagem de consecutivos.
+
+**Arquitetura:**
+- Dashboard como "orquestrador de leitura" — agrega dados de `exams` e `questions` sem criar models próprios.
+- Pré-computar valores derivados no service para manter o template declarativo.
+- 6 queries por acesso são aceitáveis; `UserSubjectStat` só valerá quando houver necessidade comprovada.
+
+**Testes:**
+- Testar métricas zeradas para usuário novo (caso de borda crítico).
+- Usar `quiz.save(update_fields=["finished_at"])` para simular treinos em datas passadas sem precisar de mocks de `timezone.now`.
+- Testar `reverse("dashboard:home") == "/"` para garantir que a URL raiz está correta.
+
+## Resumo executivo
+
+A Fase 6 entregou o dashboard principal do Nícia Track: **6 queries por acesso**, **DashboardService** com métricas agregadas (total respondido, acertos, erros, aproveitamento, streak, meta diária, desempenho por disciplina, últimos 5 treinos), **1 view CBV** e **1 template Bootstrap 5 responsivo** com estado vazio, cards de métricas, barras de progresso coloridas por disciplina e lista de treinos recentes. A suíte cresceu de 54 para **72 testes (18 novos, todos passando)**.
+
+---
+
+> **Próxima fase:** Fase 8 — Simulados.
+
+---
+---
+
+# FASE 7 — Estatísticas e Pontos Fracos
+
+## Objetivo
+
+Oferecer uma **página dedicada de análise de desempenho**: ranking de disciplinas (do mais fraco ao mais forte), ranking de pontos fracos e fortes por tópico, e visão de quais áreas precisam de mais atenção.
+
+## Problema que a fase resolve
+
+O dashboard (Fase 6) mostra um resumo de desempenho por disciplina, mas não responde "em qual tópico específico eu preciso melhorar?" nem apresenta um ranking claro de todas as disciplinas. Esta fase cria a **tela de análise profunda** — o usuário sai sabendo exatamente onde focar.
+
+## Arquivos criados
+
+```
+apps/performance/
+├── __init__.py
+├── apps.py
+├── views.py          ← PerformanceView (LoginRequired + TemplateView)
+├── urls.py           ← /estatisticas/ namespace="performance"
+└── services/
+    ├── __init__.py
+    └── performance_service.py  ← PerformanceService + dataclasses
+
+templates/performance/
+└── stats.html        ← tabela de disciplinas + cards de pontos fracos/fortes
+
+tests/
+├── unit/test_performance_service.py      ← 10 testes
+└── integration/test_performance_views.py ← 6 testes
+```
+
+## Arquivos modificados
+
+- `config/settings/base.py` — `apps.performance` adicionado a `INSTALLED_APPS`.
+- `config/urls.py` — `path("estatisticas/", ...)` adicionado.
+- `templates/base.html` — link "Estatísticas" adicionado à navbar.
+- `docs/PROJECT_EXPLAINED.md` — Fase 7 documentada + status atualizado.
+
+## Classes criadas
+
+### `SubjectPerformance` (dataclass)
+- **Função:** desempenho de um usuário em uma disciplina — nome, slug, cor, categoria (basic/specific), total respondido, total correto, percentual.
+
+### `TopicPerformance` (dataclass)
+- **Função:** desempenho em um tópico — nome, disciplina-pai (nome + cor), total, correto, percentual.
+
+### `PerformanceStats` (dataclass)
+
+| Campo | Tipo | Descrição |
+|---|---|---|
+| `subjects` | list[SubjectPerformance] | Disciplinas ordenadas por % crescente (pior → melhor) |
+| `weak_topics` | list[TopicPerformance] | Bottom 5 tópicos (mín. 3 questões) |
+| `strong_topics` | list[TopicPerformance] | Top 5 tópicos (mín. 3 questões) |
+| `total_subjects_studied` | int | Disciplinas respondidas |
+| `total_topics_studied` | int | Tópicos respondidos |
+| `has_topic_data` | bool | Se há dados de tópico disponíveis |
+
+### `PerformanceService`
+- **Responsabilidade:** calcular stats de desempenho completo em 2 queries otimizadas.
+
+**`get_full_stats(user) → PerformanceStats`**
+1. `VALUES + ANNOTATE` no `UserAnswer` agrupando por campos de `subject` → subject stats.
+2. `VALUES + ANNOTATE` no `UserAnswer` agrupando por `topic` (excluindo `isnull=True`) → topic stats.
+3. Sort em Python por percentual ascendente.
+4. Filtra `total >= MIN_QUESTIONS_FOR_RANKING (= 3)` → evita ruído de pouquíssimas questões.
+5. `weak_topics = sorted[:5]`, `strong_topics = reversed[:5]`.
+
+**`MIN_QUESTIONS_FOR_RANKING = 3`** — constante de módulo exportável para reutilização em testes sem hardcode.
+
+## Views criadas
+
+| View | Tipo base | URL | O que faz |
+|---|---|---|---|
+| `PerformanceView` | `LoginRequiredMixin + TemplateView` | `GET /estatisticas/` | Chama `PerformanceService.get_full_stats()` e renderiza o template |
+
+## Template criado
+
+### `performance/stats.html`
+
+**Estado vazio** (`total_subjects_studied == 0`): ícone, mensagem e botão "Começar treino".
+
+**Resumo** (2 cards): número de disciplinas estudadas + número de tópicos estudados.
+
+**Tabela "Desempenho por disciplina"** (ordenada pior → melhor): badge de cor + badge basic/specific, colunas Respondidas / Acertos (coloridos por faixa) / Aproveitamento (progress bar inline).
+
+**Cards laterais (col-md-6 cada):**
+- **Pontos Fracos** (vermelho): bottom 5 tópicos qualificados, com nome, badge de disciplina, %, barra vermelha.
+- **Pontos Fortes** (verde): top 5 tópicos, barra verde.
+- Caso sem tópicos classificados: alerta informativo.
+
+## Fluxo completo
+
+```
+1. Usuário acessa /estatisticas/       → PerformanceView.get()
+2. LoginRequiredMixin verifica auth    → redireciona se não autenticado
+3. get_context_data()
+   └── PerformanceService.get_full_stats(user)
+       ├── values+annotate por subject     → 1 query
+       ├── values+annotate por topic       → 1 query
+       └── sort + slice em Python          → 0 queries extras
+4. Template renderizado com PerformanceStats
+```
+
+**Total de queries por acesso:** 2.
+
+## Decisões arquiteturais
+
+### Por que ordenar em Python e não no banco?
+O Django não permite `ORDER BY` em colunas derivadas de `annotate` diretamente por alias sem subquery. Para listas de até 13 disciplinas, o sort em Python é O(N log N) com N minúsculo.
+
+### Por que `MIN_QUESTIONS_FOR_RANKING = 3` e não 5?
+Com tópicos distribuídos em 800 questões, um mínimo de 5 eliminaria quase todos os tópicos. 3 é o valor mínimo estatisticamente aceitável para inferir tendência.
+
+### Por que `has_topic_data` no dataclass?
+`weak_topics` pode estar vazio por dois motivos distintos: (a) não há tópicos nas questões respondidas, ou (b) há tópicos mas nenhum tem questões suficientes para o ranking. O template precisa distinguir esses casos para a mensagem correta.
+
+### Por que `performance` app separado do `dashboard` app?
+Conforme arquitetura da Fase 1: `dashboard` = resumo operacional (página inicial), `performance` = análise profunda. São responsabilidades distintas.
+
+## Explicação educacional
+
+**O `PerformanceService`** é como um auditor que pega todas as respostas e monta dois relatórios: um por disciplina e um por tópico. Usa `GROUP BY` do banco em 2 queries — sem carregar milhares de respostas em Python.
+
+**Os pontos fracos e fortes** são calculados em Python: ordena a lista de tópicos por percentual, pega os 5 primeiros (piores) e os 5 últimos (melhores). O limiar mínimo evita que 1 acerto em 1 tentativa (100%) apareça como "ponto forte" enganosamente.
+
+**A tabela ordenada do pior ao melhor** é intencional — o usuário precisa ver primeiro onde está mais fraco.
+
+## Perguntas de entrevista
+
+**P1. Como `values().annotate()` gera um `GROUP BY` no SQL?**
+R: `values("campo__a", "campo__b")` instrui o Django a incluir esses campos no `SELECT` e no `GROUP BY`. O `annotate(Count("id"))` acrescenta a expressão de agregação. Resultado: `SELECT campo_a, campo_b, COUNT(id) FROM ... GROUP BY campo_a, campo_b`.
+
+**P2. O que é `Count("id", filter=Q(is_correct=True))`?**
+R: Agregação condicional — conta apenas os registros que satisfazem o filtro. Gera `COUNT(CASE WHEN is_correct = TRUE THEN 1 END)` no SQL. Permite contar total e corretos numa única query.
+
+**P3. Por que o limiar `MIN_QUESTIONS_FOR_RANKING` é importante?**
+R: Sem limiar, um tópico com 1 questão errada apareceria como 0% — o pior possível. Isso é ruído estatístico. O limiar garante que o ranking reflita uma tendência real.
+
+**P4. Por que `has_topic_data` e não checar `weak_topics == []` no template?**
+R: `weak_topics` pode estar vazio por dois motivos distintos — ausência de dados de tópico ou ausência de tópicos qualificados. A flag semântica evita lógica de negócio no template.
+
+## O que aprendi nesta fase
+
+**Django:** `values().annotate()` para `GROUP BY` com múltiplas colunas via `__` lookup. `Count(filter=Q(...))` para agregação condicional.
+
+**Python:** `sorted(list, key=lambda x: x.field)` + `list(reversed(...))`. Constante de módulo exportável.
+
+**Arquitetura:** Separação dashboard (resumo) vs performance (análise). Limiar mínimo de qualidade para rankings. Flag semântica vs checar lista vazia.
+
+**Testes:** Criar questões com e sem tópicos para cobrir os dois fluxos. Verificar ordenação e limites de ranking.
+
+## Resumo executivo
+
+A Fase 7 entregou `/estatisticas/` com **2 queries por acesso**, **PerformanceService** com ranking de disciplinas (pior → melhor) e ranking de pontos fracos/fortes por tópico (mínimo 3 questões), **1 view CBV** e **1 template Bootstrap 5 responsivo** com tabela de disciplinas colorida, cards de pontos fracos/fortes e estado vazio. A suíte cresceu de 72 para **88 testes (16 novos, todos passando)**.
+
+---
+
+> **Próxima fase:** Fase 9 — Qualidade.
+
+---
+---
+
+# FASE 8 — Simulados
+
+## Objetivo
+
+Simular a prova real do Concurso 003/2026 (Prefeitura de Ponta Grossa/PR, banca Instituto UniFil): **40 questões** com distribuição exata por disciplina, cronômetro de 3 horas, preservação de progresso via `localStorage` e resultado detalhado por disciplina.
+
+## Problema que a fase resolve
+
+O usuário pode treinar questões por disciplina (Fase 5), mas não consegue simular as condições reais da prova — distribuição específica, tempo limitado e resultado por área. Esta fase cria o **modo exame** completo.
+
+## Distribuição da prova
+
+| Disciplina | Tipo | Questões |
+|---|---|---|
+| Português | Básica | 5 |
+| Matemática | Básica | 5 |
+| Informática | Básica | 5 |
+| Conhecimentos Gerais | Básica | 5 |
+| Conhecimentos Específicos | Específica | 20 |
+| **Total** | | **40** |
+
+## Arquivos criados
+
+```
+apps/exams/services/
+└── simulated_service.py   ← SimulatedService + InsufficientQuestionsError
+
+templates/exams/
+├── simulated_start.html   ← landing page com distribuição e CTA
+└── simulated_play.html    ← prova com cronômetro e localStorage
+
+tests/
+├── unit/test_simulated_service.py       ← 9 testes
+└── integration/test_simulated_views.py  ← 10 testes
+```
+
+## Arquivos modificados
+
+- `apps/exams/views.py` — adicionados `SimulatedStartView`, `SimulatedPlayView`; `ResultView` atualizado com breakdown de simulado.
+- `apps/exams/urls.py` — 2 novas URLs (`/questoes/simulado/` e `/questoes/simulado/<uuid>/`).
+- `templates/exams/result.html` — breakdown por disciplina + título "Simulado" + botão "Novo simulado".
+- `templates/base.html` — link "Simulado" adicionado à navbar.
+- `docs/PROJECT_EXPLAINED.md` — Fase 8 documentada + status atualizado.
+
+## Constantes
+
+```python
+BASIC_PER_SUBJECT = 5       # questões por disciplina básica
+SPECIFIC_TOTAL = 20         # questões específicas
+SIMULATED_TOTAL = 40        # total
+TIME_LIMIT_MINUTES = 180    # 3 horas
+```
+
+## Classes criadas
+
+### `InsufficientQuestionsError(DomainException)`
+- **Função:** exceção de domínio lançada quando não há questões suficientes no banco para montar um simulado.
+- **Por que existe?** Separar erros de domínio de erros técnicos; a view a captura e exibe como `messages.error`.
+
+### `SimulatedService`
+
+**`get_in_progress(user) → Quiz | None`**
+- Busca o simulado `IN_PROGRESS` do usuário. Retorna `None` se não há nenhum.
+- Usado na `SimulatedStartView` para evitar criar dois simulados simultâneos.
+
+**`create_simulated_quiz(user) → Quiz`**
+1. Busca as 4 disciplinas básicas ativas.
+2. Para cada uma: sorteia 5 questões via `ORDER BY RANDOM()` — levanta `InsufficientQuestionsError` se houver menos de 5.
+3. Sorteia 20 questões da pool de todas as disciplinas específicas — levanta `InsufficientQuestionsError` se houver menos de 20.
+4. Junta as 40 questões, faz `random.shuffle` em Python, cria `Quiz(quiz_type=SIMULATED)` e `bulk_create` dos `QuizQuestion`.
+5. `@transaction.atomic` — tudo ou nada.
+
+**`get_subject_breakdown(quiz) → list[dict]`**
+- Uma query `VALUES + ANNOTATE` sobre `UserAnswer` do quiz → total e acertos por disciplina.
+- Usada pela `ResultView` para mostrar desempenho por área no resultado do simulado.
+
+## Views criadas
+
+| View | URL | O que faz |
+|---|---|---|
+| `SimulatedStartView` | `GET/POST /questoes/simulado/` | GET: mostra landing page (ou redireciona se há simulado ativo); POST: cria simulado e redireciona |
+| `SimulatedPlayView` | `GET/POST /questoes/simulado/<uuid>/` | GET: exibe as 40 questões com cronômetro; POST: submete respostas |
+
+`ResultView` foi extendido: quando `quiz.quiz_type == SIMULATED`, injeta `subject_breakdown` no contexto.
+
+## Templates criados
+
+### `simulated_start.html`
+Card centralizado com:
+- Ícone, título e banca do concurso.
+- 2 badges: "40 questões" e "3h".
+- Lista de distribuição com cores das disciplinas.
+- Alerta de atenção ("cronômetro começa ao iniciar; fechar e retornar preserva respostas").
+- Botão "Iniciar simulado" (POST).
+
+### `simulated_play.html`
+- **Cabeçalho sticky** (abaixo da navbar, `top: 70px`): título, contagem de questões, cronômetro em tempo real e botão "Finalizar".
+- **Badge de disciplina** acima de cada questão (cor da disciplina).
+- **JavaScript (IIFE):**
+  - Timer: `setInterval(1000)` com contagem regressiva; vermelhor nos últimos 5 min; auto-submit ao chegar a 0; persiste em `localStorage[timer_<uuid>]`.
+  - Respostas: salva seleções em `localStorage[answers_<uuid>]` a cada mudança; restaura ao recarregar a página.
+  - Navegação: botões de atalho ficam azuis sólidos quando a questão é respondida.
+  - `finalizarSimulado()`: confirma questões sem resposta antes de submeter; limpa localStorage ao confirmar.
+
+### `result.html` (modificado)
+- Título: "Simulado" em vez de `quiz.subject.name` quando `quiz_type == simulated`.
+- Nova seção **"Resultado por disciplina"** (antes do gabarito): grid de barras por disciplina com cor dinâmica.
+- Botão de ação: "Novo simulado" (→ `simulated_start`) no lugar de "Treinar novamente" para simulados.
+
+## Fluxo completo
+
+```
+1. Usuário clica "Simulado" na navbar        → SimulatedStartView.get()
+   ├── Se há simulado ativo                  → redirect para simulated_play
+   └── Else                                  → renderiza simulated_start.html
+
+2. Clica "Iniciar simulado"                  → SimulatedStartView.post()
+   └── SimulatedService.create_simulated_quiz()
+       ├── 4× ORDER BY RANDOM() LIMIT 5      → 4 queries (básicas)
+       ├── ORDER BY RANDOM() LIMIT 20         → 1 query (específicas)
+       └── bulk_create 40 QuizQuestions       → 1 query
+   └── redirect → simulated_play
+
+3. Responde questões                         → SimulatedPlayView.get()
+   ├── Cronômetro JS conta regressivamente
+   ├── Seleções salvas em localStorage
+   └── Botões de navegação ficam sólidos
+
+4. Clica "Finalizar" ou timer expira         → SimulatedPlayView.post()
+   └── QuizService.submit_answers()
+   └── redirect → ResultView
+
+5. Resultado                                 → ResultView.get()
+   ├── QuizService.get_result()              → gabarito por questão
+   └── SimulatedService.get_subject_breakdown() → desempenho por disciplina
+```
+
+## Decisões arquiteturais
+
+### Por que duas etapas de aleatoriedade (ORDER BY RANDOM + random.shuffle)?
+`ORDER BY RANDOM()` no banco sorteia eficientemente N questões de cada pool (básica por disciplina, específicas total). O `random.shuffle` em Python mistura as questões das diferentes disciplinas — sem isso, as 20 básicas viriam todas agrupadas antes das 20 específicas.
+
+### Por que criar `SimulatedStartView` separada de `FilterView`?
+Responsabilidades diferentes: `FilterView` recebe parâmetros do usuário (disciplina, quantidade); `SimulatedStartView` não tem parâmetros — o serviço decide tudo. Fundir as duas criaria uma view com lógica condicional complexa.
+
+### Por que `localStorage` para cronômetro e respostas?
+O cronômetro precisa persistir entre recargas de página (o usuário pode fechar acidentalmente e retornar). Usar uma solução server-side exigiria endpoint extra e estado no banco. `localStorage` é suficiente para este caso — se o usuário trocar de dispositivo, o timer reinicia, mas o quiz ainda está em andamento (o prazo é controlado pelo servidor quando implementar expiração futura).
+
+### Por que `get_in_progress` redireciona em vez de criar novo quiz?
+Evita que o usuário acumule simulados não finalizados. Se há um em andamento, deve terminá-lo — é o comportamento esperado de uma prova.
+
+### Por que `InsufficientQuestionsError` em vez de retornar `None`?
+A ausência de questões é um erro de configuração (banco não importado), não um estado normal. Uma exceção de domínio capturável na view é mais expressiva que um valor `None` que a view teria de checar e tratar silenciosamente.
+
+## Explicação educacional
+
+**O `SimulatedService`** é como o coordenador de provas: ele monta a prova respeitando o edital (4×5 básicas + 20 específicas), embaralha as questões para que não fiquem agrupadas por matéria, e cria o "caderno de provas" (o `Quiz`) atomicamente.
+
+**O cronômetro JavaScript** é o fiscal de sala digital: conta regressivamente, fica vermelho nos últimos 5 minutos e entrega a prova automaticamente quando o tempo acaba. O `localStorage` é o caderno de rascunho — preserva as marcações do candidato se ele sair e voltar, mas é apagado ao entregar.
+
+**O breakdown por disciplina** no resultado é o espelho da correção real: mostra quantas questões o candidato acertou em cada área, permitindo identificar onde precisa reforçar.
+
+## Perguntas de entrevista
+
+**P1. Como o simulado garante a distribuição exata (5+5+5+5+20)?**
+R: `SimulatedService.create_simulated_quiz` faz 4 queries separadas — uma por disciplina básica com `ORDER BY RANDOM() LIMIT 5` — e uma query para as específicas com `LIMIT 20`. Cada query tem seu LIMIT explícito; se qualquer uma retornar menos que o esperado, `InsufficientQuestionsError` é lançado antes de criar qualquer coisa.
+
+**P2. Por que usar `@transaction.atomic` na criação do simulado?**
+R: O `Quiz` e os 40 `QuizQuestion` precisam ser criados como unidade. Se o `bulk_create` falhar (ex.: constraint violation), o Quiz não pode ficar sem questões. A transação garante tudo-ou-nada.
+
+**P3. Como o cronômetro funciona e por que `localStorage`?**
+R: Um `setInterval` de 1 segundo decrementa o contador e salva o valor em `localStorage`. Na próxima abertura da página, o timer lê o valor salvo em vez de começar do início. Quando chega a zero, o formulário é submetido automaticamente. `localStorage` é a solução mais simples para persistir estado client-side entre recargas sem custo de servidor.
+
+**P4. O que acontece se o usuário tentar criar um novo simulado com um já em andamento?**
+R: `SimulatedStartView.get()` e `.post()` chamam `SimulatedService.get_in_progress()` antes de criar qualquer coisa. Se houver um quiz `in_progress` do tipo `simulated`, o usuário é redirecionado para ele — nunca é criado um segundo simulado simultâneo.
+
+**P5. Como o `result.html` distingue treino de simulado?**
+R: A `ResultView` injeta `subject_breakdown` no contexto apenas quando `quiz.quiz_type == Quiz.SIMULATED`. O template verifica `{% if subject_breakdown %}` para exibir a seção extra. Para o título e os botões de ação, o template verifica `{% if quiz.quiz_type == "simulated" %}` diretamente.
+
+## O que aprendi nesta fase
+
+**Django:**
+- `View` genérico com `get()` e `post()` separados (sem `FormView`) para lógica mais explícita.
+- Importação local dentro de método (`from django.shortcuts import render`) para evitar circular imports.
+- Injetar contexto extra em views existentes condicionalmente (`subject_breakdown` apenas para simulados).
+
+**JavaScript:**
+- IIFE `(function(){})()` para escopo isolado sem poluir o global.
+- `localStorage.getItem` / `setItem` / `removeItem` para persistência client-side.
+- `setInterval` + auto-submit para timer de prova.
+- Restaurar estado de formulário (radio buttons) a partir de dados salvos.
+
+**Arquitetura:**
+- Separação de concerns: `SimulatedService` monta a prova; `QuizService.submit_answers` corrige (reuso sem duplicação).
+- `InsufficientQuestionsError` como exceção de domínio — a view captura e exibe; o service não sabe nada de HTTP.
+- `get_in_progress` como guard — previne estado inconsistente antes de qualquer ação.
+
+**Testes:**
+- Fixture `full_bank` criando o banco mínimo necessário (4 básicas + 1 específica com questões suficientes).
+- Testar distribuição: contar questões por categoria após criar o simulado.
+- Testar guards: `get_in_progress` retorna None para quiz finalizado; redireciona para ativo.
+- Testar integração completa: criar → jogar → submeter → ver resultado com breakdown.
+
+## Resumo executivo
+
+A Fase 8 entregou o **modo simulado completo**: `SimulatedService` com criação atômica de 40 questões (5+5+5+5+20), `SimulatedStartView` com guard de simulado ativo, `SimulatedPlayView` com cronômetro JavaScript + `localStorage` para persistir timer e respostas, e resultado com breakdown por disciplina. A suíte cresceu de 88 para **107 testes (19 novos, todos passando)**.
+
+---
+
+> **Próxima fase:** Fase 9 — Qualidade.
+
+---
+---
+
+# FASE 9 — Qualidade
+
+## Objetivo
+
+Revisar **todo o projeto** com olhar de produção e corrigir o que estiver abaixo desse padrão: N+1 queries, segurança, cobertura de testes (meta ≥ 70%), validações, código morto e configuração de ambientes. Diferente das fases anteriores, a Fase 9 **não adiciona funcionalidade** — ela audita o que existe e corrige.
+
+## Problema que a fase resolve
+
+As Fases 4–8 entregaram funcionalidades rapidamente. Uma fase dedicada de qualidade garante que o sistema esteja **pronto para deploy** (Fase 10) sem surpresas: nenhum formulário quebrando em produção, nenhuma query escondida que degrade com o uso, e uma suíte de testes que cubra os caminhos críticos.
+
+## Auditoria técnica (linha de base)
+
+A auditoria começou medindo o estado real antes de qualquer mudança:
+
+```
+107 testes passando | cobertura 92%
+```
+
+A cobertura **já estava acima da meta de 70%** — então o foco se deslocou de "escrever mais testes" para **corrigir problemas reais de qualidade e segurança**. Achados, por severidade:
+
+| # | Severidade | Achado | Local |
+|---|---|---|---|
+| 1 | 🔴 Crítico | `SECURE_SSL_REDIRECT=True` sem `SECURE_PROXY_SSL_HEADER` → loop de redirect infinito atrás do proxy do Render | `production.py` |
+| 2 | 🔴 Crítico | Falta `CSRF_TRUSTED_ORIGINS` → todo POST falha com 403 em produção HTTPS | `production.py` |
+| 3 | 🟡 Bug UX | `CompressedManifestStaticFilesStorage` no `base.py` exige `collectstatic` → admin/`{% static %}` quebra em dev e teste | `base.py` |
+| 4 | 🟡 Bug UX | Mensagens de erro usam tag `error`, que não existe no Bootstrap (`alert-error`) → erros saem sem cor | `base.html` + settings |
+| 5 | 🟡 N+1 | `submit_answers` fazia 1 query por questão respondida (até 40 num simulado) | `quiz_service.py` |
+| 6 | 🟢 Cleanup | Imports mortos (`datetime.timezone`, `Question`) | `quiz_service.py` |
+| 7 | 🟢 DRY | `FilterView` reimplementava a contagem em vez de usar `QuestionService.count_available` | `exams/views.py` |
+| 8 | 🟢 Robustez | `except Exception` genérico demais ao ler `daily_goal` | `dashboard_service.py` |
+| 9 | 🟢 Validação | `daily_goal` sem validators server-side (só no widget) | `accounts/models.py` |
+| 10 | 🟢 Feature | Nenhum `admin.py` — admin habilitado mas sem curadoria (destaque da Fase 1) | todos os apps |
+| 11 | 🟢 Cobertura | `import_questions` command em 0% | testes |
+
+## Arquivos criados
+
+```
+apps/questions/admin.py     ← curadoria: Subject, Topic, Question (+ Alternative inline)
+apps/accounts/admin.py      ← User (login por e-mail) + Profile inline
+apps/exams/admin.py         ← Quiz, QuizQuestion inline, UserAnswer
+
+apps/accounts/migrations/0003_alter_profile_daily_goal.py  ← validators de daily_goal
+
+tests/integration/test_import_command.py  ← 5 testes do management command
+tests/integration/test_admin.py           ← 9 smoke tests do admin
+tests/integration/test_quality.py         ← 1 teste do fix de mensagens de erro
+```
+
+## Arquivos modificados
+
+- `config/settings/production.py` — `SECURE_PROXY_SSL_HEADER`, `CSRF_TRUSTED_ORIGINS`, `SECURE_HSTS_PRELOAD`.
+- `config/settings/base.py` — `MESSAGE_TAGS` mapeando `ERROR → danger`.
+- `config/settings/development.py` e `testing.py` — `STORAGES` com storage de static simples (sem manifest).
+- `apps/exams/services/quiz_service.py` — fix de N+1 no `submit_answers` + remoção de imports mortos.
+- `apps/exams/views.py` — `FilterView` usa `QuestionService.count_available`.
+- `apps/dashboard/services/dashboard_service.py` — leitura de `daily_goal` sem `except Exception`.
+- `apps/accounts/models.py` — `daily_goal` com `MinValueValidator(1)` / `MaxValueValidator(200)`.
+- `tests/unit/test_quiz_service.py` — teste de regressão de N+1.
+- `docs/PROJECT_EXPLAINED.md` — esta seção + status da fase.
+
+## Correções em detalhe
+
+### 1 e 2 — Segurança de produção (críticas para o deploy)
+
+No Render (e em qualquer PaaS com proxy reverso), a aplicação recebe a requisição já em HTTP interno; só o header `X-Forwarded-Proto` informa que o cliente usou HTTPS. Sem `SECURE_PROXY_SSL_HEADER`, o Django acha que a conexão nunca é segura e o `SECURE_SSL_REDIRECT` **redireciona infinitamente**. E o Django 4.x exige `CSRF_TRUSTED_ORIGINS` para aceitar POST sob HTTPS — sem isso, login, cadastro e submit de quiz retornariam **403**. As origens vêm de variável de ambiente:
+
+```python
+SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
+CSRF_TRUSTED_ORIGINS = [o.strip() for o in config("CSRF_TRUSTED_ORIGINS", default="").split(",") if o.strip()]
+```
+
+### 3 — Storage de static por ambiente
+
+O `CompressedManifestStaticFilesStorage` (WhiteNoise) renomeia os arquivos com um hash e exige um *manifest* gerado por `collectstatic`. É a escolha certa **em produção** (cache-busting), mas em dev/teste, sem `collectstatic`, qualquer `{% static %}` — inclusive o do admin — estoura `Missing staticfiles manifest entry`. A correção mantém o manifest só em produção e usa o `StaticFilesStorage` simples em `development.py` e `testing.py`.
+
+### 4 — Mensagens de erro sem cor
+
+O nível `ERROR` do Django gera a tag CSS `error`, mas o Bootstrap usa `alert-danger`. O alerta saía **sem estilo vermelho**. Corrigido com `MESSAGE_TAGS = {message_constants.ERROR: "danger"}`.
+
+### 5 — N+1 no submit de respostas
+
+O código antigo buscava a alternativa selecionada **uma questão por vez**:
+
+```python
+for qq in quiz_questions:
+    if alt_id:
+        selected_alt = Alternative.objects.get(pk=alt_id, question=qq.question)  # 1 query POR questão
+```
+
+Num simulado de 40 questões, isso eram até 40 queries no submit. A correção pré-carrega todas as alternativas das questões do quiz em **uma única query** e resolve a seleção em memória, mantendo a validação de que a alternativa pertence à questão respondida (segurança):
+
+```python
+alternatives_by_id = {str(a.id): a for a in Alternative.objects.filter(question_id__in=question_ids)}
+...
+alt = alternatives_by_id.get(str(alt_id))
+if alt is not None and alt.question_id == qq.question_id:
+    selected_alt = alt
+    is_correct = alt.is_correct
+```
+
+### 10 — Django admin para curadoria
+
+A Fase 1 destacou o admin como ferramenta-chave para curar as 800 questões, mas nenhum model estava registrado. Foram criados três `admin.py`: `QuestionAdmin` com `AlternativeInline` (editar a questão e suas 4 alternativas na mesma tela), `SubjectAdmin`/`TopicAdmin` com filtros, e um `UserAdmin` customizado para o login por e-mail (sem `username`), com `add_fieldsets` próprio para não quebrar o formulário de criação.
+
+## Testes criados
+
+| Arquivo | Testes | O que cobre |
+|---|---|---|
+| `tests/unit/test_quiz_service.py` | +1 | **Regressão de N+1**: responder 12 questões usa o mesmo nº de queries que 3 |
+| `tests/integration/test_import_command.py` | 5 | Command: import normal, `--dry-run`, arquivo inexistente, `--strict` aborta, relato sem abortar |
+| `tests/integration/test_admin.py` | 9 | Changelists e form de criação de usuário carregam (200) |
+| `tests/integration/test_quality.py` | 1 | Mensagem de erro renderiza com `alert-danger`, não `alert-error` |
+
+O teste de N+1 é uma **regressão de performance** elegante: em vez de fixar um número mágico de queries, ele compara um quiz pequeno com um grande e exige contagem igual — se o N+1 voltar, a diferença reaparece e o teste falha.
+
+```
+Antes:  107 testes | cobertura 92%
+Depois: 122 testes | cobertura 96%
+```
+
+## Decisões arquiteturais
+
+### Por que configurar `STORAGES` por ambiente em vez de remover o manifest?
+O manifest é uma vantagem real em produção (cache eterno com invalidação por hash). Removê-lo do `base.py` penalizaria produção; mantê-lo em dev/teste quebra o admin. A solução correta é **configuração por ambiente**: produção herda o manifest do `base.py`; dev e teste sobrescrevem com o storage simples.
+
+### Por que testar N+1 por comparação e não com `assertNumQueries(n)`?
+Um número fixo (`assertNumQueries(5)`) é frágil: muda quando se adiciona um savepoint ou um índice. Comparar dois tamanhos de entrada testa exatamente a **propriedade** que importa — "o custo não cresce com o número de questões" — e é imune a mudanças de contagem-base.
+
+### Por que validar `daily_goal` no model e não só no widget?
+O `min`/`max` do widget é validação **client-side** — um POST direto (curl, script) o ignora. `MinValueValidator`/`MaxValueValidator` no model são a barreira **server-side**, aplicada em todo `full_clean()` e no admin.
+
+### Por que `getattr(user, "profile", None)` em vez de `try/except`?
+`except Exception` engolia qualquer erro (inclusive bugs reais) só para tratar a ausência de perfil. Como o `Profile` é criado por signal e tem `default=10`, `getattr` com fallback expressa a intenção exata sem mascarar nada.
+
+## Explicação educacional
+
+Imagine que o sistema vai "abrir as portas" para a Nícia usar de verdade. A Fase 9 é a **vistoria final antes da inauguração**.
+
+**Os dois ajustes de produção** são como descobrir, antes de inaugurar, que a porta da frente (HTTPS) tem uma armadilha: sem avisar o Django que o cliente entrou por HTTPS, ele manda a pessoa de volta para a porta — para sempre. E sem a lista de origens confiáveis, o sistema recusaria todo formulário enviado.
+
+**O fix de N+1** é trocar 40 idas ao depósito (uma por questão) por **uma só** ida que traz tudo. O resultado é idêntico; o custo, uma fração.
+
+**O admin** é a sala dos bastidores: agora a Nícia (ou um curador) pode corrigir o enunciado de uma questão ou ajustar um gabarito sem mexer no código.
+
+**Os testes novos** são o "checklist da vistoria" que fica registrado: se alguém no futuro reintroduzir o N+1, ou quebrar o admin, ou voltar a mensagem de erro sem cor, um teste acende a luz vermelha.
+
+## Perguntas de entrevista
+
+**P1. O que é o problema N+1 e como você o detectou e corrigiu aqui?**
+R: É fazer 1 query para buscar N itens e depois N queries para dados relacionados (uma por item). No `submit_answers`, cada questão respondida disparava um `Alternative.objects.get`. Detectei lendo o loop e confirmei com um teste que compara a contagem de queries entre um quiz pequeno e um grande. Corrigi pré-carregando todas as alternativas num dict com uma única query (`filter(question_id__in=...)`) e resolvendo a seleção em memória.
+
+**P2. Por que `SECURE_PROXY_SSL_HEADER` é necessário no Render?**
+R: Atrás de um proxy reverso, a conexão entre o proxy e a aplicação é HTTP; o Django só sabe que o cliente usou HTTPS pelo header `X-Forwarded-Proto`. Sem configurar isso, `request.is_secure()` é sempre falso e o `SECURE_SSL_REDIRECT` entra em loop de redirecionamento infinito.
+
+**P3. Qual a diferença entre validação no widget e no model?**
+R: O widget (`min`/`max`) valida no navegador — é UX, e é facilmente contornável por um POST direto. O validator no model é server-side, roda em `full_clean()` e no admin, e é a garantia real de integridade do dado.
+
+**P4. Por que o admin do `User` precisou de customização?**
+R: O `UserAdmin` padrão do Django assume `username` como campo de login e referencia esse campo nos `fieldsets` e `add_fieldsets`. Como nosso `USERNAME_FIELD` é `email` e `username` é opcional, foi preciso reescrever `fieldsets`/`add_fieldsets` para usar `email` + senha — senão o admin quebra ao abrir o usuário ou o formulário de criação.
+
+**P5. A meta de cobertura era 70% e o projeto já estava em 92%. O que isso muda na fase?**
+R: Muda o foco. Cobertura alta não significa ausência de bugs — significa que o caminho feliz está testado. Com a meta já batida, a Fase 9 investiu em **qualidade de produção** (segurança, N+1, configuração por ambiente) e em testes de **caminhos antes não cobertos** (o management command, o admin) e de **regressão** (N+1), em vez de inflar a porcentagem.
+
+## O que aprendi nesta fase
+
+**Django:**
+- `SECURE_PROXY_SSL_HEADER`, `CSRF_TRUSTED_ORIGINS`, `SECURE_HSTS_PRELOAD` para deploy seguro atrás de proxy.
+- `MESSAGE_TAGS` para casar os níveis de mensagem com o framework CSS.
+- `STORAGES` por ambiente; quando o `ManifestStaticFilesStorage` ajuda e quando atrapalha.
+- Customizar `UserAdmin` (`fieldsets`/`add_fieldsets`) para um `User` com login por e-mail.
+- `TabularInline`/`StackedInline` para editar relações na mesma tela do admin.
+- `MinValueValidator`/`MaxValueValidator` como validação server-side no model.
+
+**PostgreSQL / performance:**
+- Reconhecer e eliminar N+1 com `filter(campo_id__in=[...])` + lookup em memória.
+
+**Python:**
+- `getattr(obj, "attr", default)` como alternativa limpa a `try/except` para acesso opcional.
+
+**Testes:**
+- `CaptureQueriesContext` para medir e comparar o número de queries.
+- Testar regressão de performance por **comparação** em vez de número fixo.
+- `call_command` para testar management commands ponta a ponta.
+- Smoke tests do admin (changelist e form de criação retornam 200).
+
+**Tooling:**
+- `black` e `isort --profile black` em conjunto (isort antes, black com a palavra final) para formatação consistente.
+
+## Resumo executivo
+
+A Fase 9 auditou o projeto inteiro e corrigiu **11 achados** — dois deles **bloqueadores de produção** (loop de redirect e 403 de CSRF no Render), um N+1 no submit de respostas, o storage de static que quebrava o admin em dev/teste, mensagens de erro sem cor, além de cleanup, validação server-side e a criação do **Django admin** para curadoria. A suíte cresceu de **107 para 122 testes** e a cobertura de **92% para 96%**, com destaque para um teste de **regressão de N+1** e a cobertura do management command e do admin. O sistema está pronto para a Fase 10 (Deploy).
+
+---
+
+---
+---
+
+# FASE 10 — Deploy
+
+## Objetivo
+
+Colocar o Nícia Track **acessível publicamente na internet**: imagem Docker de produção, PostgreSQL gerenciado no Render, variáveis de ambiente documentadas, migrations automatizadas e checklists de deploy e pós-deploy.
+
+## Problema que a fase resolve
+
+As fases anteriores construíram e validaram todas as funcionalidades localmente. Sem esta fase, o sistema existe apenas na máquina de desenvolvimento. O objetivo é torná-lo acessível para a Nícia (e futuros usuários) a qualquer hora, de qualquer dispositivo, com dados persistentes e HTTPS.
+
+## Arquivos criados
+
+```
+Dockerfile              ← imagem de produção (Python 3.12-slim + gunicorn)
+.dockerignore           ← exclui segredos e artefatos do contexto de build
+docker-compose.yml      ← desenvolvimento local com PostgreSQL via Docker
+render.yaml             ← Blueprint do Render (banco + serviço web + env vars)
+```
+
+## Arquivos modificados
+
+- `config/settings/development.py` — suporte a PostgreSQL via vars PG* (fallback para SQLite quando ausentes; retrocompatível).
+- `config/settings/production.py` — bloco `LOGGING` adicionado (WARNING+ para stdout/stderr, capturado pelo Render).
+- `.env.example` — template completo de todas as variáveis necessárias em produção.
+- `docs/PROJECT_EXPLAINED.md` — status da Fase 10 + esta seção.
+
+## Entregáveis e o que cada um faz
+
+### `Dockerfile`
+
+```
+FROM python:3.12-slim
+│
+├── apt-get: libpq-dev + libjpeg-dev + zlib1g-dev   (psycopg2 + Pillow)
+├── COPY requirements/ → pip install production.txt  (camada de cache separada)
+├── COPY . .                                          (código da aplicação)
+├── ARG SECRET_KEY + RUN collectstatic               (estáticos gerados no build)
+├── EXPOSE 8000
+└── CMD gunicorn --bind 0.0.0.0:${PORT:-8000} --workers 2
+```
+
+**Camadas de cache separadas:** copiando `requirements/` antes do código, uma mudança de código NÃO invalida a camada do `pip install` — o build fica ~60s mais rápido em cada re-deploy.
+
+**`${PORT:-8000}`:** O Render injeta a variável `$PORT` no container. O operador `:-` usa 8000 como fallback quando rodando localmente sem Docker Compose.
+
+**ARG SECRET_KEY para collectstatic:** O `CompressedManifestStaticFilesStorage` do WhiteNoise exige que os settings carreguem para gerar o manifest. A `SECRET_KEY` real não é embutida na imagem — é passada como ARG de build-time com um valor dummy; em runtime, a variável de ambiente sobrescreve.
+
+### `docker-compose.yml`
+
+Sobe dois serviços:
+- **`db`**: PostgreSQL 16-alpine com healthcheck (`pg_isready`). Volume nomeado `postgres_data` persiste os dados entre reinicializações.
+- **`web`**: constrói da imagem de produção, mas o volume `.:/app` sobrepõe o código com o local (live reload), e o `command` instala pacotes de dev + sobe o `runserver`. Aguarda o healthcheck do banco (`depends_on: db: condition: service_healthy`).
+
+O `development.py` detecta as variáveis PG* injetadas pelo compose e usa PostgreSQL automaticamente — sem SQLite em nenhuma camada do Docker.
+
+### `render.yaml` (Blueprint)
+
+Define em um único arquivo:
+- Um banco **PostgreSQL free** (`nicia-track-db`) com nome, usuário e banco configurados.
+- Um serviço web Docker (`nicia-track`) com:
+  - `runtime: docker` → Render constrói o `Dockerfile`.
+  - `preDeployCommand: python manage.py migrate --noinput` → migrations rodam ANTES do container assumir o tráfego (deploy sem downtime).
+  - `healthCheckPath: /conta/login/` → Render confirma que o container está saudável antes de finalizar o deploy.
+  - Credenciais do banco injetadas via `fromDatabase` → nunca hardcoded.
+  - `SECRET_KEY: generateValue: true` → Render gera um segredo seguro na primeira criação.
+
+## Variáveis de ambiente (produção)
+
+| Variável | Obrigatória | Valor de exemplo | De onde vem |
+|---|---|---|---|
+| `DJANGO_SETTINGS_MODULE` | ✅ | `config.settings.production` | render.yaml |
+| `SECRET_KEY` | ✅ | (gerada pelo Render) | `generateValue: true` |
+| `ALLOWED_HOSTS` | ✅ | `nicia-track.onrender.com` | render.yaml (ajustar) |
+| `CSRF_TRUSTED_ORIGINS` | ✅ | `https://nicia-track.onrender.com` | render.yaml (ajustar) |
+| `PGHOST` | ✅ | (do banco Render) | `fromDatabase` |
+| `PGPORT` | ✅ | 5432 | `fromDatabase` |
+| `PGDATABASE` | ✅ | nicia_track | `fromDatabase` |
+| `PGUSER` | ✅ | nicia_track | `fromDatabase` |
+| `PGPASSWORD` | ✅ | (do banco Render) | `fromDatabase` |
+
+## Checklist de deploy
+
+### Pré-requisitos
+
+- [ ] Repositório no GitHub com todos os arquivos da Fase 10 commitados
+- [ ] `render.yaml` na raiz do repositório
+- [ ] `.env` **não está** no repositório (está no `.gitignore`)
+- [ ] Todos os 122 testes passando localmente
+
+### No Render (primeira vez)
+
+1. Acesse [render.com](https://render.com) → **New → Blueprint**
+2. Conecte o repositório GitHub do projeto
+3. O Render detecta `render.yaml` e exibe a prévia: 1 banco + 1 serviço web
+4. Clique **Apply** → aguarde a criação do banco (≈1 min) e o primeiro build (≈3–5 min)
+5. Após o deploy, copie a URL gerada (ex.: `https://nicia-track.onrender.com`)
+6. Atualize **ALLOWED_HOSTS** e **CSRF_TRUSTED_ORIGINS** no painel do serviço com a URL real
+7. Faça um novo deploy (botão **Manual Deploy → Deploy latest commit**)
+
+### Importar as questões
+
+Após o primeiro deploy bem-sucedido:
+
+```bash
+# Via Render Shell (aba "Shell" no serviço web):
+python manage.py import_questions docs/15_BANCO_MESTRE_DE_QUESTOES.md
+```
+
+Resultado esperado: `Criadas: 800 | Atualizadas: 0 | Inalteradas: 0 | Disciplinas: 13`
+
+### Criar o superusuário (opcional, para curadoria via admin)
+
+```bash
+# Na Render Shell:
+python manage.py createsuperuser
+```
+
+## Checklist pós-deploy
+
+### Funcionalidade básica
+
+- [ ] `https://nicia-track.onrender.com` redireciona para `/conta/login/` (sem erro de CSRF)
+- [ ] Cadastro de novo usuário funciona
+- [ ] Login funciona e redireciona para o dashboard
+- [ ] Dashboard carrega sem erros
+- [ ] Banco de questões: filtrar por disciplina e iniciar um treino
+- [ ] Resultado de treino exibe gabarito comentado
+- [ ] Estatísticas carregam
+- [ ] Simulado: iniciar → cronômetro aparece → finalizar → ver resultado com breakdown
+
+### Segurança e configuração
+
+- [ ] Conexão via HTTPS (cadeado no navegador)
+- [ ] POST de login/cadastro sem erro 403 (CSRF configurado corretamente)
+- [ ] Acessar `/admin/` faz login com o superusuário criado
+
+### Performance
+
+- [ ] Primeira abertura pode ser lenta (Render free spin-down após inatividade) — normal
+- [ ] Após primeira requisição, página carrega em < 3s
+
+## Fluxo completo de uma requisição em produção
+
+```
+1. Usuário abre https://nicia-track.onrender.com
+2. Render recebe a requisição (proxy reverso → HTTPS termination)
+3. Header X-Forwarded-Proto: https → Django entende que é HTTPS
+   (SECURE_PROXY_SSL_HEADER configurado na Fase 9)
+4. WhiteNoiseMiddleware verifica se é arquivo estático
+   ├── SE SIM: serve o arquivo com hash no nome + Cache-Control: max-age=31536000
+   └── SE NÃO: passa para o Django
+5. Django processa: autenticação, view, service, ORM → PostgreSQL Render
+6. Template renderizado → resposta HTML → usuário
+```
+
+**WhiteNoise + CompressedManifestStaticFilesStorage:**
+Os arquivos estáticos são servidos diretamente pelo processo gunicorn (sem Nginx separado). O WhiteNoise adiciona cabeçalhos de cache de 1 ano e serve versões comprimidas (gzip/brotli). O manifest garante que um arquivo `app.js` alterado terá um nome novo (`app.abc123.js`) → navegadores sempre pegam a versão atualizada.
+
+## Decisões arquiteturais
+
+### Por que Docker e não deploy nativo (buildpack) no Render?
+
+**Escolhido:** Docker.
+- Paridade exata entre desenvolvimento local e produção — a mesma imagem roda em ambos os ambientes.
+- Controle total sobre a versão do Python, libs do sistema (libpq, libjpeg) e processo de boot.
+- Imagem versionada: cada commit gera uma imagem; rollback é trocar a imagem.
+
+**Alternativa:** Render nativo (detecta Python, instala `requirements.txt`). É mais simples de configurar, mas menos reproduzível — a versão do Python pode mudar no buildpack, e libs do sistema precisam ser declaradas separadamente.
+
+### Por que `preDeployCommand` em vez de migrations no `CMD`?
+
+**Escolhido:** `preDeployCommand: python manage.py migrate --noinput`.
+- As migrations rodam **antes** do novo container assumir o tráfego. Se falharem, o deploy é cancelado e a versão anterior continua servindo — sem downtime.
+- Migrations no `CMD` (no startup) fariam a aplicação tentar subir com um banco desatualizado se as migrations falhassem.
+
+**Alternativa:** Migration no startup (`sh -c "python manage.py migrate && gunicorn ..."`). Funciona para o primeiro deploy, mas não para deploys de atualizações com múltiplos workers — cada worker tentaria rodar a migration simultaneamente.
+
+### Por que `collectstatic` no Dockerfile e não no `preDeployCommand`?
+
+**Escolhido:** no `Dockerfile` (durante o build da imagem).
+- Os arquivos estáticos fazem parte da imagem — estão disponíveis imediatamente quando o container sobe.
+- Não dependem de acesso à rede ou ao banco de dados.
+- A camada de cache do Docker evita reprocessar os estáticos se o código não mudou.
+
+**Alternativa:** no `preDeployCommand` ou no `CMD`. Funciona, mas adiciona tempo de startup e falha de forma menos óbvia se a `SECRET_KEY` não estiver configurada.
+
+### Por que 2 workers no gunicorn?
+
+O Render free tier tem 0.5 CPU compartilhado. A fórmula clássica `2 × CPUs + 1` sugere 2 workers. Com 2 workers, o servidor consegue atender 2 requisições simultâneas sem bloquear — suficiente para uso individual ou pequenos grupos. Aumentar os workers em plano pago é trivial (env var ou CMD ajustado).
+
+### Por que WhiteNoise para estáticos e não S3/CDN?
+
+**Escolhido:** WhiteNoise (serve estáticos direto do processo gunicorn).
+- Zero infraestrutura extra: sem bucket S3, sem CloudFront, sem configurações de CORS.
+- Para o volume deste projeto (um usuário, arquivos estáticos pequenos e versionados), a latência extra de servir via gunicorn em vez de CDN é imperceptível.
+- O `CompressedManifestStaticFilesStorage` aplica compressão e cache de longa duração automaticamente.
+
+**Alternativa:** S3 + CloudFront. Melhor para escala, mas adiciona custo e complexidade de configuração (credenciais AWS, CORS, `django-storages`). Pode ser adicionado se o sistema crescer.
+
+### Por que PostgreSQL free do Render e não SQLite?
+
+Em desenvolvimento, SQLite é conveniente (zero configuração). Em produção:
+- SQLite não suporta múltiplos escritores simultâneos — dois usuários respondendo ao mesmo tempo causariam bloqueios de banco.
+- O arquivo SQLite estaria no filesystem efêmero do container — qualquer redeploy apagaria todos os dados.
+- PostgreSQL do Render é um serviço gerenciado com backups automáticos e alta disponibilidade.
+
+## Limitações do plano free do Render
+
+| Limitação | Impacto | Mitigação |
+|---|---|---|
+| **Spin-down após 15 min de inatividade** | Primeira requisição leva 30–60s para "acordar" | Aceitável para uso pessoal; pago não tem spin-down |
+| **Banco PostgreSQL gratuito expira em 90 dias** | Dados perdidos após 90 dias de inatividade do banco | **Resolvido:** banco migrado para Neon (neon.tech), que não expira no plano gratuito |
+| **Filesystem efêmero** | Arquivos de media (avatares) são perdidos no redeploy | Migrar avatares para S3/Cloudinary se necessário no futuro |
+| **0.5 CPU / 512 MB RAM** | Consultas pesadas podem ser lentas | Adequado para 1–10 usuários simultâneos |
+
+## Explicação educacional
+
+Imagine que você nunca fez deploy de um sistema Django.
+
+**O `Dockerfile`** é como uma receita de bolo: lista cada ingrediente (libs do sistema, pacotes Python, código) e cada passo de preparo (collectstatic). O resultado é uma "imagem" — uma caixa selada com tudo que o sistema precisa para rodar. Você abre essa caixa em qualquer servidor e o sistema funciona identicamente.
+
+**O `docker-compose.yml`** é o ambiente local de desenvolvimento: levanta um banco de dados PostgreSQL e o sistema Django num único comando (`docker-compose up`). O volume `.:/app` é como um espelho — mudanças no código local aparecem instantaneamente dentro do container.
+
+**O `render.yaml`** é o "manual de montagem" para o Render. Com esse arquivo no repositório, você conecta o GitHub ao Render e ele cria tudo automaticamente: banco de dados, variáveis de ambiente, serviço web. Um time inteiro pode recriar o ambiente de produção em minutos.
+
+**O `preDeployCommand`** é como uma checagem pré-voo: antes do avião (container novo) decolar, o copiloto (Render) confere se tudo está OK (migrations). Se algo der errado, o avião antigo continua voando — nenhum passageiro percebe.
+
+**O WhiteNoise** é como uma loja de conveniência no próprio prédio: em vez de ir buscar um arquivo CSS num armazém distante (S3/CDN), ele está disponível no mesmo processo que serve o HTML. Para o tamanho deste projeto, é mais que suficiente.
+
+## Perguntas de entrevista
+
+**P1. Por que usar Docker em vez do deploy nativo do Render?**
+R: Paridade de ambiente. A mesma imagem que roda localmente roda em produção — sem surpresas de "funciona na minha máquina". Também garante uma versão específica de Python e de libs do sistema, e torna o rollback trivial (basta apontar para a imagem anterior).
+
+**P2. Por que `collectstatic` durante o build da imagem e não no startup?**
+R: Para separar o tempo de build do tempo de boot. Estáticos são gerados uma vez por commit, não a cada container que sobe. Além disso, se `collectstatic` falhar, o build falha e o deploy nunca acontece — o problema aparece cedo.
+
+**P3. O que é `preDeployCommand` e por que é melhor que rodar migrations no CMD?**
+R: É um comando que roda dentro do container antes de ele assumir o tráfego. Migrations ali garantem que o banco está atualizado antes do código novo ser exposto. No CMD, se as migrations falhassem, o container tentaria subir com esquema desatualizado; e em múltiplos workers, todos tentariam rodar a migration simultaneamente.
+
+**P4. Como o WhiteNoise serve arquivos estáticos sem Nginx?**
+R: Ele é um middleware WSGI que intercepta requisições de arquivos estáticos antes de chegarem ao Django. Serve diretamente do processo gunicorn com os headers corretos de cache (`Cache-Control: max-age=31536000`) e compressão (gzip/brotli). O `CompressedManifestStaticFilesStorage` adiciona um hash ao nome do arquivo, garantindo que o navegador sempre use a versão mais recente.
+
+**P5. Por que `SECURE_PROXY_SSL_HEADER` é essencial no Render?**
+R: Atrás do proxy do Render, a conexão interna entre o proxy e o container é HTTP. Sem este header, Django não sabe que o cliente usou HTTPS, `request.is_secure()` retorna `False`, e `SECURE_SSL_REDIRECT=True` entra em loop infinito de redirecionamento. O header `X-Forwarded-Proto` informa ao Django que o cliente original usou HTTPS.
+
+**P6. O que acontece com os arquivos de media (avatares) no redeploy?**
+R: São perdidos. O filesystem do container Render é efêmero — cada deploy cria um container novo. Para persistir media em produção, a solução correta é armazená-los externamente (S3, Cloudinary). Para o escopo atual (um usuário, avatar opcional), é uma limitação aceitável documentada.
+
+**P7. Como o `development.py` detecta se deve usar SQLite ou PostgreSQL?**
+R: Verifica a variável de ambiente `PGDATABASE` via `python-decouple`. Se estiver definida (caso do Docker Compose), configura PostgreSQL com as demais variáveis PG*. Se não estiver (desenvolvimento local sem Docker), usa SQLite — retrocompatível com o fluxo existente.
+
+## O que aprendi nesta fase
+
+**Docker:**
+- `FROM python:3.12-slim` vs `python:3.12` — slim é ~200 MB menor, sem utilitários desnecessários.
+- Ordem das camadas para maximizar cache (`requirements/` antes do código).
+- `ARG` vs `ENV` — ARG é build-time, ENV é runtime; ARG não persiste na imagem final.
+- `${VAR:-default}` em shell para fallback de variável de ambiente.
+- `.dockerignore` para excluir segredos e artefatos do contexto de build.
+
+**Render:**
+- Blueprint (`render.yaml`) para infraestrutura como código.
+- `preDeployCommand` para migrations zero-downtime.
+- `fromDatabase` para injeção automática de credenciais.
+- `generateValue: true` para secrets gerenciados pela plataforma.
+- Limitações do free tier (spin-down, banco expira em 90 dias, filesystem efêmero).
+
+**Produção Django:**
+- `SECURE_PROXY_SSL_HEADER` para proxies reversos (qualquer PaaS).
+- `CSRF_TRUSTED_ORIGINS` para POST sob HTTPS em Django 4.x.
+- `CompressedManifestStaticFilesStorage` + WhiteNoise para static files sem CDN.
+- `LOGGING` com handler `StreamHandler` para captura de logs pela plataforma.
+- `CONN_MAX_AGE=60` para connection pooling com PostgreSQL gerenciado.
+
+**Arquitetura:**
+- Separação de configuração por ambiente (dev/testing/production) como fundação do deploy.
+- `--workers 2` no gunicorn para concorrência básica no free tier.
+- Filesystem efêmero como limitação de PaaS → implicações para media.
+
+## Deploy real — como foi na prática
+
+A execução do deploy revelou quatro limitações que não eram evidentes no planejamento. Cada uma exigiu uma decisão imediata:
+
+### Problema 1 — `preDeployCommand` não suportado no plano free
+
+**O que aconteceu:** ao aplicar o `render.yaml` via Blueprint, o Render rejeitou com:
+```
+services[0] pre-deploy command is not supported for free tier services
+```
+
+**Decisão:** mover `migrate`, `import_questions` e `create_admin` para dentro do `CMD` do `Dockerfile`, encadeados com `&&`. Os três comandos são **idempotentes** — o que já existe não é duplicado nem sobrescrito, então rodar em todo deploy é seguro.
+
+**Trade-off aceito:** se qualquer comando falhar antes do gunicorn, o serviço fica offline. Com `preDeployCommand` (disponível no plano pago), o container anterior continuaria servindo durante o problema. Para o escopo atual, o trade-off é aceitável.
+
+### Problema 2 — Limite de 1 banco gratuito por conta no Render
+
+**O que aconteceu:** o Blueprint falhou porque a conta já tinha um banco gratuito de outro projeto:
+```
+Cannot have more than one active free tier database
+```
+
+**Decisão:** usar **Neon** (`neon.tech`) como provedor de PostgreSQL gratuito em vez do banco do Render.
+
+**Por que Neon:**
+- Não expira (o banco free do Render é desativado após 90 dias sem upgrade para pago)
+- Suporta múltiplos projetos no plano gratuito
+- Compatível com Django via `psycopg2` padrão
+
+**Configuração extra:** Neon exige SSL. Foi adicionado em `production.py`:
+```python
+"OPTIONS": {"sslmode": "require"}
+```
+Sem isso: `connection refused` no handshake SSL.
+
+### Problema 3 — Variável `PGUSER` com valor padrão errado
+
+**O que aconteceu:** `password authentication failed for user 'nicia'`. O `production.py` usa `default="nicia"` para `PGUSER`. Como a variável não estava salva corretamente no Render, o Django conectava com o usuário errado.
+
+**Decisão:** verificar e salvar todas as 5 variáveis `PG*` no painel **Environment** do Render com os valores exatos fornecidos pelo Neon (em especial `PGUSER=neondb_owner`), e clicar em **Save, rebuild, and deploy**.
+
+### Problema 4 — `CSRF_TRUSTED_ORIGINS` com URL placeholder
+
+**O que aconteceu:** formulários retornavam `403 Forbidden` após o login. A variável `CSRF_TRUSTED_ORIGINS` estava configurada com `https://nicia-track.onrender.com` (placeholder definido antes de saber a URL real do serviço).
+
+**Decisão:** após o primeiro deploy bem-sucedido, atualizar `CSRF_TRUSTED_ORIGINS` com a URL real e fazer um Manual Deploy.
+
+### Resultado final
+
+URL de produção: **`https://nicia-tracker-questions.onrender.com`**
+
+Banco: **Neon PostgreSQL** — gratuito, sem expiração, com SSL.
+
+A cada deploy, o container executa automaticamente (em ordem):
+1. `python manage.py migrate` — aplica migrations pendentes
+2. `python manage.py import_questions docs/15_BANCO_MESTRE_DE_QUESTOES.md` — importa/atualiza as 800 questões
+3. `python manage.py create_admin` — cria o superusuário se ainda não existir
+4. `gunicorn` — sobe o servidor
+
+---
+
+## Resumo executivo
+
+A Fase 10 entregou o sistema **em produção**: um `Dockerfile` de produção com `python:3.12-slim`, camadas de cache otimizadas e `collectstatic` no build; um `docker-compose.yml` para desenvolvimento local com PostgreSQL; e um `render.yaml` Blueprint de referência. O `development.py` detecta automaticamente SQLite ou PostgreSQL. O `production.py` tem HTTPS forçado, `CSRF_TRUSTED_ORIGINS`, `SECURE_PROXY_SSL_HEADER` e logging para stdout. Na execução real, `preDeployCommand` não estava disponível no free tier — a solução foi encadear todos os comandos de inicialização no `CMD` do Dockerfile, garantindo idempotência. O banco do Render tinha limite de um por conta gratuita — a solução foi usar Neon, que não expira. A suíte de **122 testes continua passando**. O Nícia Track está no ar em `https://nicia-tracker-questions.onrender.com`.
+
+---
+
+> As Fases 1–10 implementaram e documentaram o sistema base. A partir da Fase 11, o projeto evolui com funcionalidades de apoio ao estudo.
+
+---
+
+# Fase 11 — Plano de Estudos (Fase 1: Estrutura e Leitura)
+
+## Objetivo
+
+Adicionar ao Nícia Track um módulo de **Plano de Estudos** que transforma os 14 arquivos MASTER (`.md` em `docs/`) em um percurso de aprendizagem estruturado. A Fase 1 cobre a fundação: cadastro de módulos e capítulos, rastreamento de progresso de leitura (não iniciado → em andamento → concluído), dashboard com métricas e navegação linear entre capítulos.
+
+## Problema resolvido
+
+Antes, a Nícia tinha 14 documentos de conteúdo mas nenhuma forma de saber _o que já estudou_ ou _o que estudar a seguir_. Os documentos existiam apenas como arquivos estáticos no repositório. Com a Fase 11, o conteúdo passa a ser representado no banco de dados, e cada leitura gera um registro de progresso vinculado ao usuário.
+
+---
+
+## Arquivos criados
+
+### App `apps/study_plan/`
+
+| Arquivo | Função |
+|---|---|
+| `__init__.py` | Pacote Python vazio |
+| `apps.py` | `StudyPlanConfig` — registra o app com Django |
+| `models.py` | Três modelos: `StudyModule`, `StudyChapter`, `LessonProgress` |
+| `admin.py` | Admin com inline de capítulos e filtros de progresso |
+| `urls.py` | 5 rotas com namespace `study_plan` |
+| `views.py` | 5 views CBV + View pura para completar capítulo |
+| `services/__init__.py` | Pacote vazio |
+| `services/plan_service.py` | `PlanService` com 7 métodos estáticos + 2 dataclasses |
+| `migrations/0001_initial.py` | Migração auto-gerada dos 3 modelos |
+| `management/commands/import_study_plan.py` | Command idempotente que popula módulos e capítulos |
+
+### Templates `templates/study_plan/`
+
+| Arquivo | Rota correspondente |
+|---|---|
+| `dashboard.html` | `GET /plano/` |
+| `module_list.html` | `GET /plano/modulos/` |
+| `module_detail.html` | `GET /plano/modulo/<slug>/` |
+| `chapter_read.html` | `GET /plano/capitulo/<slug>/` |
+
+### Documentos
+
+| Arquivo | Função |
+|---|---|
+| `docs/STUDY_PLAN_IMPLEMENTATION.md` | Arquitetura aprovada (fonte de verdade técnica) |
+| `docs/STUDY_CONTENT_MAPPING.md` | Mapeamento manual explícito dos 14 módulos e 98 capítulos |
+
+### Testes
+
+| Arquivo | Cobertura |
+|---|---|
+| `tests/integration/test_study_plan_views.py` | 9 testes de integração (login, carregamento, progresso, idempotência, 404) |
+| `tests/unit/test_plan_service.py` | 10 testes unitários (ModuleProgress, mark_started/completed, get_next_chapter, streak) |
+
+---
+
+## Arquivos modificados
+
+| Arquivo | Mudança |
+|---|---|
+| `config/settings/base.py` | `"apps.study_plan"` adicionado a `LOCAL_APPS` |
+| `config/urls.py` | `path("plano/", include("apps.study_plan.urls", namespace="study_plan"))` |
+| `templates/base.html` | Item de navbar "Plano de Estudos" entre Estatísticas e menu do usuário |
+
+---
+
+## Modelos
+
+### `StudyModule`
+
+Representa um dos 14 módulos de estudo. Herda de `BaseModel` (UUID pk).
+
+```python
+class StudyModule(BaseModel):
+    subject      = OneToOneField(Subject, null=True, blank=True)  # nullable para Módulo 10
+    title        = CharField(max_length=200)
+    slug         = SlugField(unique=True)           # auto-gerado via slugify(title)
+    order        = PositiveSmallIntegerField()       # 1–14
+    description  = TextField(blank=True)
+    master_file  = CharField(max_length=80)         # ex: "01_SAUDE_UNICA_MASTER.md"
+    study_phase  = CharField(choices=PHASE_CHOICES) # "1"/"2"/"3"/"4"
+    estimated_hours = DecimalField(5, 1)
+    category     = CharField(choices=[specific/basic])
+    icon         = CharField(max_length=10, blank=True)
+    is_active    = BooleanField(default=True)
+    # property: chapter_count
+```
+
+`subject` é `OneToOneField` pois cada `Subject` deve se mapear a no máximo um `StudyModule`. O Módulo 10 (Revisão Final) tem `subject=None` porque não corresponde a uma disciplina específica do banco de questões.
+
+### `StudyChapter`
+
+Representa um capítulo dentro de um módulo (7 por módulo em média).
+
+```python
+class StudyChapter(BaseModel):
+    module            = ForeignKey(StudyModule, related_name="chapters")
+    title             = CharField(max_length=200)
+    slug              = SlugField()                  # único dentro do módulo
+    order             = PositiveSmallIntegerField()
+    content           = TextField(blank=True)        # vazio na Fase 1
+    key_points        = TextField(blank=True)
+    estimated_minutes = PositiveSmallIntegerField(default=30)
+    tags              = JSONField(default=list)      # para matching de mini quiz (Fase 3)
+    related_subjects  = ManyToManyField(Subject)    # para enriquecer busca
+    sections_source   = CharField(max_length=200)   # ex: "Seção 1.1–1.3 do MASTER"
+    is_active         = BooleanField(default=True)
+    # unique_together: (module, slug), (module, order)
+```
+
+O campo `tags` (JSONField) foi incluído na Fase 1 pelo Ajuste 2 da aprovação da arquitetura: quando a Fase 3 implementar MiniQuiz, o serviço poderá usar essas tags para buscar questões por tópico, com fallback para disciplina.
+
+### `LessonProgress`
+
+Máquina de estados por usuário+capítulo.
+
+```python
+class LessonProgress(BaseModel):
+    user           = ForeignKey(AUTH_USER_MODEL, related_name="lesson_progresses")
+    chapter        = ForeignKey(StudyChapter, related_name="progresses")
+    status         = CharField(choices=[not_started/in_progress/completed])
+    started_at     = DateTimeField(null=True)
+    completed_at   = DateTimeField(null=True)  # preparado para ScheduledReview (Fase futura)
+    time_spent_minutes = PositiveSmallIntegerField(default=0)
+    # unique_together: (user, chapter)
+```
+
+A restrição `unique_together = [("user", "chapter")]` garante exatamente um registro por par usuário/capítulo, permitindo que `get_or_create` seja usado com segurança em todos os métodos de serviço.
+
+---
+
+## Serviço `PlanService`
+
+Toda a lógica de negócio está em `apps/study_plan/services/plan_service.py`. As views não fazem queries diretas — delegam ao serviço.
+
+### Dataclasses de saída
+
+```python
+@dataclass
+class ModuleProgress:
+    module: StudyModule
+    total_chapters: int
+    completed: int
+    in_progress: int
+    percentage: float  # calculado em __post_init__
+
+@dataclass
+class PlanSummary:
+    total_modules: int
+    total_chapters: int
+    completed_chapters: int
+    in_progress_chapters: int
+    overall_percentage: float
+    streak_days: int
+    module_progresses: list[ModuleProgress]
+    next_chapter: StudyChapter | None
+```
+
+### Métodos
+
+| Método | Retorno | Descrição |
+|---|---|---|
+| `get_module_progress(user, module)` | `ModuleProgress` | Conta capítulos por status no módulo |
+| `get_plan_summary(user)` | `PlanSummary` | Consolida todos os módulos + streak + próximo capítulo |
+| `get_next_chapter(user)` | `StudyChapter \| None` | Em andamento primeiro, depois não iniciado por ordem |
+| `get_plan_streak(user)` | `int` | Dias consecutivos com ≥1 capítulo concluído (conta também a partir de ontem) |
+| `mark_chapter_started(user, chapter)` | `LessonProgress` | `get_or_create` + atualiza se `not_started` |
+| `mark_chapter_completed(user, chapter)` | `LessonProgress` | `get_or_create` + seta `completed_at` se não completado |
+| `get_calendar_activity(user, year, month)` | `dict[date, int]` | Contagem de capítulos concluídos por dia no mês (para Fase 4) |
+
+---
+
+## Views
+
+Todas as views têm `LoginRequiredMixin`. Nenhuma faz query direta — usam `PlanService` ou `get_object_or_404`.
+
+| View | Método | URL | Template |
+|---|---|---|---|
+| `PlanDashboardView` | GET | `/plano/` | `dashboard.html` |
+| `ModuleListView` | GET | `/plano/modulos/` | `module_list.html` |
+| `ModuleDetailView` | GET | `/plano/modulo/<slug>/` | `module_detail.html` |
+| `ChapterReadView` | GET | `/plano/capitulo/<slug>/` | `chapter_read.html` |
+| `ChapterCompleteView` | POST | `/plano/capitulo/<slug>/concluir/` | redirect → module_detail |
+
+`ChapterReadView` chama `mark_chapter_started()` automaticamente ao carregar o capítulo. `ChapterCompleteView` é `View` puro (não `TemplateView`) pois só processa POST e redireciona.
+
+---
+
+## Management Command `import_study_plan`
+
+```
+python manage.py import_study_plan [--dry-run]
+```
+
+O mapeamento completo de 14 módulos e 98 capítulos está embutido em `STUDY_PLAN_MAP` como lista de dataclasses `ModuleDef` e `ChapterDef`. O command **não faz parsing de markdown** — os dados são explícitos (Ajuste 1 da arquitetura aprovada).
+
+Estratégia de idempotência:
+- `StudyModule`: `update_or_create(slug=...)`
+- `StudyChapter`: `update_or_create(module=..., order=...)`
+- `related_subjects`: sempre regrava via `chapter.related_subjects.set([subject])`
+
+Segunda execução: 0 criados, 14+98 atualizados. Seguro para re-executar em produção.
+
+---
+
+## Fluxo completo (happy path)
+
+```
+Usuário acessa /plano/
+  → PlanDashboardView.get_context_data()
+  → PlanService.get_plan_summary(user) → PlanSummary
+  → dashboard.html renderiza: próximo capítulo (CTA), % geral, streak, módulos por categoria
+
+Usuário clica em "Módulo Saúde Única"
+  → ModuleDetailView → get_object_or_404(StudyModule, slug=slug)
+  → progress_map = {chapter_id: LessonProgress} para todos os capítulos do módulo
+  → module_detail.html lista capítulos com status icon + botão (Estudar/Continuar/Rever)
+
+Usuário clica em "Estudar" no Capítulo 1
+  → ChapterReadView → mark_chapter_started() → status muda para in_progress
+  → chapter_read.html mostra conteúdo (ou alerta para MASTER), tags, badge de status
+  → Sidebar direita: todos os capítulos do módulo (desktop only)
+  → Usuário lê o MASTER file e clica "Marcar como Concluído"
+
+POST /plano/capitulo/<slug>/concluir/
+  → ChapterCompleteView.post() → mark_chapter_completed()
+  → messages.success() + redirect → /plano/modulo/<slug>/
+```
+
+---
+
+## Decisões arquiteturais
+
+### Por que `OneToOneField` para `StudyModule.subject`?
+
+Cada `Subject` deve ter no máximo um `StudyModule`. Um `ForeignKey` permitiria dois módulos apontando para a mesma disciplina, o que quebraria a semântica de "cada disciplina tem exatamente uma trilha de estudo". O `OneToOneField` reforça isso no nível do banco.
+
+### Por que `tags = JSONField` e não `ManyToMany`?
+
+Tags são strings livres, não entidades gerenciadas. Criar uma tabela `Tag` para strings como `"one-health"` ou `"saude-unica"` seria over-engineering. `JSONField` permite armazenar e iterar as tags sem migração adicional quando novos valores aparecem. A Fase 3 (MiniQuiz) pode filtrar `tags__contains="one-health"` diretamente no ORM.
+
+### Por que o content dos capítulos está vazio na Fase 1?
+
+A decisão consciente foi separar estrutura de conteúdo. O `STUDY_CONTENT_MAPPING.md` mapeia onde cada capítulo está no MASTER file (`sections_source`). Preencher o `content` de 98 capítulos seria trabalho de curadoria manual — possível via admin ou um future command `extract_chapter_content`. O template trata graciosamente o caso vazio com um alerta informativo.
+
+### Por que mapeamento explícito e não parsing de markdown?
+
+Parsing automático de headers `##` é frágil: renomear uma seção no MASTER quebraria silenciosamente a estrutura do plano. Com mapeamento explícito, a relação entre capítulos e seções é uma decisão intencional e auditável. Mudanças no MASTER não afetam o plano automaticamente — há uma atualização manual deliberada.
+
+---
+
+## Testes
+
+A suíte cresceu de 122 para **141 testes** (19 novos).
+
+### Unitários (`tests/unit/test_plan_service.py`) — 10 testes
+
+- `test_module_progress_zero_when_no_activity` — ModuleProgress zerado sem atividade
+- `test_module_progress_updates_when_completed` — 100% quando único capítulo concluído
+- `test_mark_chapter_started_creates_in_progress` — status correto + started_at setado
+- `test_mark_chapter_completed_sets_completed_at` — completed_at setado
+- `test_mark_chapter_completed_idempotent` — segunda chamada não cria registro duplicado
+- `test_get_next_chapter_returns_first_when_no_progress` — retorna o primeiro capítulo
+- `test_get_next_chapter_skips_completed` — pula capítulos concluídos
+- `test_get_next_chapter_returns_none_when_all_done` — None quando tudo concluído
+- `test_plan_streak_zero_when_no_activity` — streak 0 sem atividade
+- `test_plan_streak_counts_consecutive_days` — streak ≥ 1 após conclusão
+
+### Integração (`tests/integration/test_study_plan_views.py`) — 9 testes
+
+- `test_dashboard_requires_login` — 302 para `/conta/login/`
+- `test_dashboard_loads` — 200 + "Plano de Estudos" no HTML
+- `test_module_list_loads` — 200 + título do módulo
+- `test_module_detail_loads` — 200 + título do capítulo
+- `test_chapter_read_creates_progress` — `LessonProgress` criado ao acessar
+- `test_chapter_complete_marks_completed` — POST seta status `completed`
+- `test_chapter_complete_is_idempotent` — dois POSTs geram apenas 1 registro
+- `test_module_detail_404_for_unknown_slug` — 404 para slug inexistente
+- `test_chapter_read_404_for_unknown_slug` — 404 para slug inexistente
+
+---
+
+## Perguntas de entrevista
+
+**Por que usar dataclasses (`ModuleProgress`, `PlanSummary`) em vez de dicts?**
+Dataclasses têm type hints, autocompletion na IDE, `__repr__` legível e protegem contra typos em keys. Um dict `{"completed": 3}` não documenta seus campos; uma dataclass sim.
+
+**Como funciona `unique_together = [("user", "chapter")]`?**
+Cria uma constraint composta no banco (UNIQUE INDEX). O ORM então garante que `get_or_create(user=u, chapter=c)` nunca insira duplicata — o `created=False` no retorno indica que o registro já existia.
+
+**O que acontece se `mark_chapter_completed` for chamado duas vezes?**
+`get_or_create` retorna o registro existente com `created=False`. O `if progress.status != COMPLETED` protege: se já está completo, não faz update desnecessário. Resultado: exatamente 1 registro no banco.
+
+**Por que `ChapterReadView` chama `mark_chapter_started` automaticamente?**
+UX: o ato de abrir o capítulo já indica intenção de estudo. Não faz sentido exigir que o usuário clique em "Iniciar" antes de ler. A transição `not_started → in_progress` é implícita; a transição `in_progress → completed` é explícita (botão POST).
+
+**O `completed_at` de `LessonProgress` para quê serve no futuro?**
+Para o sistema de revisão espaçada (Ajuste 3 aprovado): `ScheduledReview` calcularia D+1, D+7, D+21 a partir de `completed_at`. O campo foi pensado para isso desde a Fase 1, sem implementação prematura.
+
+---
+
+## O que foi aprendido na Fase 11
+
+- **Service Layer como adaptador**: a view nunca sabe como o progresso é calculado — apenas pede um `PlanSummary`. Isso torna as views testáveis sem mocks complexos e o serviço testável sem HTTP.
+- **Mapeamento explícito vs. geração automática**: a tentação de parsear markdown automaticamente é forte, mas a robustez de um mapeamento explícito compensa o trabalho manual inicial.
+- **JSONField para dados semiestruturados**: `tags = JSONField(default=list)` é a solução certa para listas de strings livres que não precisam de uma tabela própria.
+- **Idempotência desde o início**: `update_or_create` em vez de `create` no management command permite re-executar em produção sem efeitos colaterais, mesmo após mudanças nos dados.
+- **`OneToOneField` comunica intenção**: a escolha entre `OneToOneField` e `ForeignKey` não é apenas técnica — é semântica. `OneToOneField` diz "existe exatamente um", o que a IDE e o banco reforçam.
+
+---
+
+## Resumo executivo
+
+A Fase 11 adicionou o **módulo de Plano de Estudos** ao Nícia Track: 3 modelos Django (`StudyModule`, `StudyChapter`, `LessonProgress`), um serviço com 7 métodos estáticos (`PlanService`), 5 views CBV, 4 templates Bootstrap 5 e um management command idempotente que popula 14 módulos e 98 capítulos a partir de um mapeamento explícito. A suíte de testes cresceu de 122 para **141 testes (todos passando)**. O conteúdo dos capítulos estava vazio na Fase 1 — preenchido na Fase 1.5.
+
+---
+
+---
+
+# Fase 12 — Importação de Conteúdo dos Capítulos (Fase 1.5)
+
+**Data:** 30/06/2026  
+**Objetivo:** popular `StudyChapter.content` para todos os 98 capítulos com o conteúdo real extraído dos 14 arquivos MASTER, e renderizá-lo corretamente no template.
+
+---
+
+## Problema resolvido
+
+Antes desta fase, abrir qualquer capítulo do Plano de Estudos mostrava:
+
+> "O conteúdo deste capítulo ainda está sendo preparado. Consulte o arquivo MASTER na pasta docs/."
+
+Após: o usuário lê o conteúdo completo do tema dentro do sistema, incluindo tabelas, títulos, listas, blockquotes e destaques em negrito, sem precisar consultar os arquivos MASTER externamente.
+
+---
+
+## Arquivos criados
+
+| Arquivo | Descrição |
+|---|---|
+| `apps/study_plan/management/commands/populate_chapter_content.py` | Command com mapping explícito de 98 capítulos e 3 estratégias de extração |
+| `apps/study_plan/templatetags/__init__.py` | Pacote templatetags |
+| `apps/study_plan/templatetags/study_filters.py` | Filtro `render_markdown` (usa a biblioteca `Markdown`) |
+| `docs/PHASE_1_5_CONTENT_MAPPING_REPORT.md` | Mapeamento detalhado módulo × capítulo × seção × chars |
+| `docs/PHASE_1_5_IMPLEMENTATION.md` | Relatório de implementação completo |
+
+---
+
+## Arquivos modificados
+
+| Arquivo | Mudança |
+|---|---|
+| `templates/study_plan/chapter_read.html` | Filtro `linebreaks` → `render_markdown`; CSS estendido para tabelas, h2/h3/h4, blockquotes |
+
+---
+
+## Estratégias de extração de seções
+
+O management command `populate_chapter_content` lê cada arquivo MASTER e extrai seções por tipo de cabeçalho:
+
+| Tipo | Padrão de cabeçalho | Módulos |
+|---|---|---|
+| `numbered` | `## N. TÍTULO` | 1-9, 11, 13 |
+| `bloco` | `# BLOCO N — TÍTULO` | 10 |
+| `modulo` | `# MÓDULO N — TÍTULO` | 12, 14 |
+| `modulo_head/tail` | Split por subsection `## Tecnologia` | 14 (caps 4-5) |
+
+O parser genérico `_parse_sections(file_content, header_pattern)` usa regex para delimitar seções. A última seção de cada arquivo captura automaticamente todo o conteúdo subsequente (ex.: "Revisão Relâmpago", "Top Pegadinhas") sem código especial.
+
+---
+
+## Renderização de markdown
+
+**Antes:** `{{ chapter.content|linebreaks }}` — converte `\n` para `<br>`, ignora sintaxe markdown.
+
+**Depois:** `{{ chapter.content|render_markdown }}` — produz HTML completo com tabelas `|---|---|`, cabeçalhos `## H2`, listas `- item`, blockquotes `>`, negrito `**texto**`.
+
+O filtro `render_markdown` está em `apps/study_plan/templatetags/study_filters.py`:
+
+```python
+@register.filter(name='render_markdown')
+def render_markdown(value):
+    extensions = ['tables', 'fenced_code', 'sane_lists']
+    return mark_safe(md.markdown(str(value), extensions=extensions))
+```
+
+---
+
+## Estatísticas
+
+| Métrica | Valor |
+|---|---|
+| Capítulos populados | 98 / 98 (100%) |
+| Capítulos vazios | 0 |
+| Total de caracteres | 361.080 |
+| Média por capítulo | 3.684 chars |
+| Menor capítulo | 1.233 chars (Leptospirose, M02/Ch05) |
+| Maior capítulo | 11.599 chars (CCZs e Legislação, M05/Ch05) |
+| Módulos completos | 14 / 14 |
+| Testes | 141 passando, 0 falhas |
+
+---
+
+## Regra principal preservada
+
+> "NÃO INVENTAR CONTEÚDO. NÃO RESUMIR AGRESSIVAMENTE. NÃO REESCREVER O MATERIAL."
+
+O texto exibido no sistema é **idêntico** ao dos arquivos MASTER — apenas delimitado por seção. Nenhuma palavra foi adicionada, removida ou parafrasada.
+
+---
+
+## Resumo executivo
+
+A Fase 1.5 completou o Plano de Estudos: `populate_chapter_content` lê 14 arquivos MASTER, extrai seções por tipo de cabeçalho e persiste o conteúdo nos 98 `StudyChapter.content`. Um templatetag `render_markdown` converte o markdown para HTML no navegador, com CSS estilizando tabelas, cabeçalhos e blockquotes. A suíte mantém **141 testes passando**. O sistema agora serve conteúdo real ao aluno sem depender de arquivos externos.
+
+---
+
+---
+
+# Fase do Plano de Estudos — Fase 2: Aprendizagem Ativa e Reflexão Guiada
+
+## Objetivo
+
+Adicionar as etapas de escrita após a leitura de cada capítulo. Após marcar um capítulo como concluído, a candidata é guiada por dois momentos pedagógicos:
+
+1. **Aprendizagem Ativa (`ActiveLearningNote`):** "Explique com suas palavras o que aprendeu."
+2. **Reflexão Guiada (`GuidedReflection`):** três perguntas estruturadas — "O que você entendeu?", "Qual foi a parte mais importante?", "Qual foi a parte mais difícil?"
+
+## Problema que a fase resolve
+
+Ler passivamente não consolida a memória. A técnica da "elaborative interrogation" (reformular o conteúdo em suas próprias palavras) e a reflexão metacognitiva (identificar lacunas) são as duas intervenções com maior evidência empírica para memória de longo prazo. Sem elas, a candidata termina um capítulo e esquece 70% em 24 horas.
+
+## Fluxo implementado
+
+```
+ChapterReadView      → candidata lê o conteúdo do capítulo
+ChapterCompleteView  → POST: marca LessonProgress.status = COMPLETED
+                     → redireciona para ChapterNoteView (antes ia para module_detail)
+ChapterNoteView      → candidata escreve explicação livre (≥ 20 chars)
+                     → POST: salva ActiveLearningNote via PlanService
+                     → redireciona para ChapterReflectionView
+ChapterReflectionView → candidata responde 3 perguntas
+                      → POST: salva GuidedReflection via PlanService
+                      → redireciona para ChapterReadView (com mensagem de sucesso)
+```
+
+Cada etapa pode ser acessada diretamente e editada a qualquer momento. Nenhuma etapa é bloqueante.
+
+## Models criados
+
+### `ActiveLearningNote`
+
+| Campo | Tipo | Descrição |
+|---|---|---|
+| `user` | FK(User, CASCADE) | Candidata |
+| `chapter` | FK(StudyChapter, CASCADE) | Capítulo estudado |
+| `explanation` | TextField | Explicação livre (≥ 20 chars) |
+
+**Constraint:** `unique_together = [('user', 'chapter')]` — uma nota por capítulo; edição sobrescreve.
+
+**Por que `unique_together`?** Uma nota por capítulo é o comportamento correto: a candidata quer evoluir sua explicação sem acumular versões. O `update_or_create` no service garante que o segundo envio atualize, não duplique.
+
+### `GuidedReflection`
+
+| Campo | Tipo | Descrição |
+|---|---|---|
+| `user` | FK(User, CASCADE) | Candidata |
+| `chapter` | FK(StudyChapter, CASCADE) | Capítulo estudado |
+| `what_understood` | TextField | "O que você entendeu?" |
+| `most_important` | TextField | "Qual foi a parte mais importante?" |
+| `most_difficult` | TextField | "Qual foi a parte mais difícil?" |
+
+**Constraint:** `unique_together = [('user', 'chapter')]`
+
+## Forms criados
+
+### `ActiveLearningNoteForm`
+- `ModelForm` para `ActiveLearningNote`
+- Validação: `min_length=20` no `clean_explanation()` com mensagem em português
+- Widget: `Textarea(rows=8)`
+
+### `GuidedReflectionForm`
+- `ModelForm` para `GuidedReflection`
+- 3 campos requeridos, sem validação adicional de tamanho
+- Widget: `Textarea(rows=4)` por campo
+
+## Views criadas
+
+### `ChapterNoteView` (`LoginRequiredMixin + FormView`)
+- **GET:** pré-popula o form com nota existente (modo edição automático)
+- **POST:** chama `PlanService.save_active_note()` → redireciona para reflexão
+- Contexto: `chapter`, `module`, `existing_note`, `completion_status`
+
+### `ChapterReflectionView` (`LoginRequiredMixin + FormView`)
+- **GET:** pré-popula com reflexão existente (modo edição automático)
+- **POST:** chama `PlanService.save_guided_reflection()` → redireciona para capítulo
+- Contexto: `chapter`, `module`, `existing_reflection`, `completion_status`
+
+## Service: extensões do `PlanService`
+
+### `ChapterCompletionStatus` (dataclass)
+```python
+@dataclass
+class ChapterCompletionStatus:
+    is_reading_done: bool
+    has_note: bool
+    has_reflection: bool
+
+    @property
+    def is_fully_done(self) -> bool:
+        return self.is_reading_done and self.has_note and self.has_reflection
+```
+
+### `get_chapter_completion_status(user, chapter)`
+Consulta `LessonProgress`, `ActiveLearningNote` e `GuidedReflection` em 3 queries. Retorna `ChapterCompletionStatus`.
+
+### `save_active_note(user, chapter, explanation)`
+`update_or_create` em `ActiveLearningNote`. Envolto em `@transaction.atomic`.
+
+### `save_guided_reflection(user, chapter, what_understood, most_important, most_difficult)`
+`update_or_create` em `GuidedReflection`. Envolto em `@transaction.atomic`.
+
+## Templates criados
+
+### `chapter_note.html`
+- Breadcrumb com etapas visuais (Leitura → **Aprendizagem Ativa** → Reflexão)
+- Card de instrução: por que escrever com suas palavras ajuda
+- Textarea com contador de caracteres em JavaScript inline
+- Alerta se nota já existe (modo edição)
+- Link "Pular esta etapa" → reflexão direta
+
+### `chapter_reflection.html`
+- Breadcrumb com etapas visuais
+- Card de instrução: por que a reflexão metacognitiva funciona
+- 3 campos rotulados com badges coloridos (azul/verde/amarelo)
+- Alerta se reflexão já existe (modo edição)
+- Link "Pular esta etapa" → capítulo direto
+
+## Alterações em arquivos existentes
+
+| Arquivo | Mudança |
+|---|---|
+| `apps/study_plan/models.py` | +`ActiveLearningNote`, +`GuidedReflection` |
+| `apps/study_plan/forms.py` | Criado (novo) |
+| `apps/study_plan/views.py` | +`ChapterNoteView`, +`ChapterReflectionView`; `ChapterCompleteView` redireciona para `chapter_note` |
+| `apps/study_plan/urls.py` | +2 rotas: `nota/` e `reflexao/` |
+| `apps/study_plan/services/plan_service.py` | +`ChapterCompletionStatus`, +3 métodos |
+| `apps/study_plan/admin.py` | +`ActiveLearningNoteAdmin`, +`GuidedReflectionAdmin` |
+| `templates/study_plan/chapter_read.html` | Botão de conclusão atualizado; +links para nota/reflexão quando concluído |
+| `apps/study_plan/migrations/0002_*.py` | Gerado automaticamente |
+
+## Estatísticas
+
+| Métrica | Valor |
+|---|---|
+| Testes anteriores | 141 |
+| Testes adicionados | +17 (7 unitários + 10 integração) |
+| **Total de testes** | **158 passando, 0 falhas** |
+| Models novos | 2 |
+| Views novas | 2 |
+| Templates novos | 2 |
+| Forms novos | 2 |
+| URLs novas | 2 |
+
+## O que aprendi nesta fase
+
+- **`update_or_create`** como padrão de upsert: cria se não existe, atualiza se existe — idempotente por design.
+- **`FormView` com instância pré-populada via `get_initial()`:** em vez de usar `instance=` (que exigiria get_object), preenche os valores iniciais manualmente — mais flexível quando a instância pode não existir.
+- **`unique_together` em modelos de produção:** garante integridade no banco quando a regra de negócio é "uma entrada por par de entidades".
+- **Dataclass com `@property`:** `ChapterCompletionStatus.is_fully_done` como propriedade calculada mantém o dataclass imutável e sem lógica de persistência.
+
+## Perguntas de entrevista
+
+**P1. Por que `update_or_create` em vez de dois caminhos separados (create/update)?**
+R: `update_or_create` é atômico no banco — não há janela de corrida entre verificar a existência e criar. O código fica mais simples, e o comportamento é idempotente: chamar duas vezes com os mesmos dados produz o mesmo resultado.
+
+**P2. Por que `get_initial()` em vez de `get_form_kwargs()` para pré-popular o form?**
+R: `get_form_kwargs()` seria usado quando há um `instance` de model para o `ModelForm`. Aqui, a nota pode não existir — então usamos `get_initial()`, que preenche apenas os valores iniciais dos campos sem vincular uma instância ao form. O form continua funcionando para criação ou edição sem alterar a lógica.
+
+**P3. Por que o `ChapterCompleteView` redireciona para `chapter_note` em vez de `module_detail`?**
+R: Para guiar a candidata no fluxo de aprendizagem ativa imediatamente após a leitura. O tempo logo após ler é o melhor momento para consolidar o conteúdo. Redirecionar para o módulo quebraria o ciclo pedagógico.
+
+## Resumo executivo
+
+A Fase 2 implementou o ciclo completo de aprendizagem ativa: **2 models** (`ActiveLearningNote`, `GuidedReflection`), **2 forms** com validação, **2 views `FormView`** com pré-população automática, **2 templates Bootstrap** com etapas visuais e instruções pedagógicas, e **3 novos métodos no `PlanService`** (upsert via `update_or_create`, dataclass de status). O fluxo completo — Leitura → Aprendizagem Ativa → Reflexão — guia a candidata sem nenhuma etapa bloqueante. **158 testes passando, 0 falhas.** A Fase 1 não foi quebrada.
+
+---
+
+---
+
+# Fase do Plano de Estudos — Fase 3: Mini Quiz, Caderno de Erros e Questões Sugeridas
+
+## Objetivo
+
+Fechar o ciclo de aprendizagem ativo: após ler, registrar nota e reflexão, a candidata pratica com questões reais do banco e tem seus erros centralizados automaticamente.
+
+## Problema que a fase resolve
+
+Sem prática imediata após a leitura, o conteúdo estudado é esquecido rapidamente. Sem um caderno de erros, a candidata não sabe o que errou e onde focar a revisão. Esta fase conecta o conteúdo estudado (Fases 1 e 2) às questões do banco existente.
+
+## Arquivos criados
+
+| Arquivo | Descrição |
+|---|---|
+| `apps/study_plan/services/mini_quiz_service.py` | `MiniQuizService`: seleção e criação de mini quiz com fallback em 3 níveis |
+| `apps/study_plan/services/error_notebook_service.py` | `ErrorNotebookService`: sync de erros, filtros, anotações, revisão |
+| `apps/study_plan/migrations/0003_errornotebookentry.py` | Migration do `ErrorNotebookEntry` |
+| `apps/exams/migrations/0002_errornotebookentry.py` | Migration: `Quiz.MINI` + `Quiz.chapter` |
+| `templates/study_plan/chapter_mini_quiz.html` | Template do mini quiz (2 estados: disponível/insuficiente) |
+| `templates/study_plan/error_notebook.html` | Template do caderno de erros com filtros e paginação |
+| `tests/unit/test_mini_quiz_service.py` | 7 testes unitários do MiniQuizService |
+| `tests/unit/test_error_notebook_service.py` | 9 testes unitários do ErrorNotebookService |
+| `tests/integration/test_phase3_views.py` | 12 testes de integração das novas views |
+| `docs/PHASE_3_IMPLEMENTATION_PLAN.md` | Plano pré-código |
+| `docs/PHASE_3_IMPLEMENTATION.md` | Este relatório |
+
+## Arquivos modificados
+
+| Arquivo | Mudança |
+|---|---|
+| `apps/study_plan/models.py` | +`ErrorNotebookEntry`; +import de `Question` e `timezone` |
+| `apps/exams/models.py` | +`Quiz.MINI` em `TYPE_CHOICES`; +campo `chapter` (FK nullable) |
+| `apps/exams/services/quiz_service.py` | +hook `ErrorNotebookService.sync_errors()` ao final de `submit_answers()` |
+| `apps/study_plan/views.py` | +`ChapterMiniQuizView`, `ErrorNotebookView`, `ErrorNoteView`, `ErrorReviewView`; redirect de `ChapterReflectionView` → `chapter_mini_quiz` |
+| `apps/study_plan/urls.py` | +4 rotas: `mini-quiz/`, `caderno-de-erros/`, `/nota/`, `/revisar/` |
+| `apps/study_plan/admin.py` | +`ErrorNotebookEntryAdmin` |
+| `templates/base.html` | +link "Caderno de Erros" na navbar |
+
+## Models criados
+
+### `ErrorNotebookEntry`
+
+- **Função:** centraliza questões erradas de todos os quizzes (treino, simulado, mini quiz).
+- **Campos-chave:** `user`, `question`, `last_user_answer`, `wrong_count`, `last_wrong_at`, `next_review_at`, `personal_note`, `is_reviewed`.
+- **Constraint:** `unique_together = [("user", "question")]` — uma entrada por questão; `wrong_count` incrementa a cada novo erro.
+- **`next_review_at`** calculado no service: 1 erro → D+1, 2 → D+3, 3 → D+7, ≥4 → D+14 (revisão espaçada simplificada).
+
+### Alteração no `Quiz`
+
+- `MINI = "mini"` adicionado a `TYPE_CHOICES`
+- `chapter = FK(StudyChapter, SET_NULL, null=True)` — liga o mini quiz ao capítulo que o originou
+
+## Services criados
+
+### `MiniQuizService`
+
+Seleção de questões com **fallback em 3 níveis**:
+1. Por `Topic` matching as `tags` do capítulo (mais preciso)
+2. Por `module.subject` (fallback de disciplina)
+3. Por `related_subjects` (fallback alternativo)
+
+Retorna `None` se não encontrar ao menos 3 questões — view exibe mensagem amigável.
+
+### `ErrorNotebookService`
+
+- `sync_errors(user, quiz)`: percorre `UserAnswer` com `is_correct=False` e `selected_alternative` não nula → `get_or_create` com upsert de `wrong_count`; idempotente.
+- `get_notebook(user, ...)`: filtros por disciplina, status de revisão e ordenação.
+- `save_personal_note`, `mark_as_reviewed`: operações de manutenção do caderno.
+
+## Fluxo completo (Fase 3)
+
+```
+Candidata conclui leitura → nota → reflexão
+  → ChapterReflectionView redireciona para ChapterMiniQuizView
+  → ChapterMiniQuizView:
+      GET: MiniQuizService.get_questions_for_chapter() → exibe contagem
+        └── Se ≥ 3 questões: "Iniciar Mini Quiz" habilitado
+        └── Se < 3: mensagem amigável + link para treino geral
+      POST: MiniQuizService.create_mini_quiz() → cria Quiz(type=MINI)
+        └── Redireciona para PlayQuizView (view existente, sem alteração)
+  → PlayQuizView: candidata responde as questões
+  → submit_answers() finaliza quiz
+        └── hook: ErrorNotebookService.sync_errors() → erros vão para o caderno
+  → ResultView (view existente): gabarito comentado
+        └── "Voltar ao plano" via quiz.chapter
+```
+
+## Decisões tomadas
+
+### Fallback de 3 níveis no MiniQuizService
+
+O banco não garante granularidade suficiente para todos os capítulos (ex.: "Raiva — Epidemiologia" pode não ter Topic). A estratégia progressiva evita que o mini quiz falhe silenciosamente: tenta o mais específico primeiro e degrada graciosamente.
+
+### Hook inline (não signal, não Celery)
+
+`sync_errors` é chamado diretamente no `submit_answers()` — simples, sem dependência de infra adicional. O custo é O(questões_erradas), geralmente < 5 operações de banco. Signal seria menos explícito; Celery seria excessivo neste escopo.
+
+### Questões puladas não vão ao caderno
+
+Pulada (`selected_alternative=None`) significa que a candidata não tentou responder. Registrá-la como erro distorceria as métricas. Apenas respostas erradas com alternativa selecionada entram no caderno.
+
+### `unique_together = [("user", "question")]` no `ErrorNotebookEntry`
+
+Garante idempotência no banco. `sync_errors` usa `get_or_create` — chamar duas vezes com o mesmo quiz não duplica, apenas incrementa `wrong_count`. A integridade vem do banco, não do código.
+
+## Estatísticas
+
+| Métrica | Valor |
+|---|---|
+| Testes anteriores | 158 |
+| Testes adicionados | +28 (16 unitários + 12 integração) |
+| **Total de testes** | **186 passando, 0 falhas** |
+| Models novos | 1 (`ErrorNotebookEntry`) |
+| Models alterados | 1 (`Quiz`: +MINI, +chapter) |
+| Services novos | 2 (`MiniQuizService`, `ErrorNotebookService`) |
+| Views novas | 4 |
+| Templates novos | 2 |
+| URLs novas | 4 |
+
+## O que aprendi nesta fase
+
+- **Fallback estratificado em service:** não assumir que o banco tem o nível de granularidade esperado — implementar degradação graciciosa progressiva.
+- **Hook inline vs signal vs Celery:** para operações O(pequeno) sem necessidade de assincronismo, o hook inline é a solução mais simples e explícita.
+- **`get_or_create` com upsert manual:** quando o ORM não oferece um upsert nativo com incremento condicional, `get_or_create` + save seletivo é idiomático e legível.
+- **Revisão espaçada simplificada:** a função `_next_review_date(wrong_count)` implementa um algoritmo de espaçamento simples sem precisar de uma biblioteca externa. O wrong_count é o proxy natural para a dificuldade percebida.
+
+## Perguntas de entrevista
+
+**P1. Como o MiniQuizService garante que há questões suficientes sem criar um quiz vazio?**
+R: O serviço tenta em 3 níveis (topic, subject, related_subjects) e só cria o Quiz se encontrar ≥ 3 questões. Se nenhum nível retornar o mínimo, retorna `None`. A view interpreta o `None` e exibe uma mensagem amigável em vez de criar um quiz inválido.
+
+**P2. O que é idempotência no `sync_errors` e por que ela importa?**
+R: Idempotente significa que chamar `sync_errors` com o mesmo quiz duas vezes produz o mesmo resultado — não duplica entradas no caderno. É garantido pelo `unique_together(user, question)` no banco: na segunda chamada, o `get_or_create` retorna a entrada existente em vez de criar outra.
+
+**P3. Por que questões puladas não vão ao caderno de erros?**
+R: Pulada (`selected_alternative=None`) indica que a candidata não tentou responder — pode ter sido por falta de tempo, não por desconhecimento. Incluí-la como erro distorceria as métricas do caderno, que deve refletir dificuldades reais, não omissões táticas.
+
+**P4. Por que `SET_NULL` no `Quiz.chapter` em vez de `CASCADE` ou `PROTECT`?**
+R: Se um capítulo for desativado ou removido, não faz sentido apagar o histórico de quizzes da candidata (CASCADE) nem impedir a remoção do capítulo (PROTECT). Com `SET_NULL`, o quiz fica órfão (`chapter=None`) mas o histórico de respostas e erros é preservado integralmente.
+
+## Resumo executivo
+
+A Fase 3 fechou o ciclo de aprendizagem: após ler e refletir (Fases 1 e 2), a candidata pratica com um **mini quiz** de 3 a 5 questões reais do banco, e seus erros são registrados automaticamente no **caderno de erros** — independente de qual tipo de quiz originou o erro (treino, simulado ou mini quiz). O `MiniQuizService` reutiliza 100% a infraestrutura de quiz existente com fallback em 3 níveis; o `ErrorNotebookService` faz upsert idempotente via `get_or_create`. **186 testes passando, 0 falhas.** Nenhum teste anterior foi quebrado.
+
+---
+---
+
+# Fase 3 do Plano de Estudos — Progresso, Calendário e Streak
+
+> **Nota de nomenclatura:** esta fase é interna do módulo `study_plan` (streak, calendário, ProgressView). Não confundir com a "Fase 3" do projeto principal (importador de questões). As duas "Fase 3" vivem em raias diferentes.
+
+## Objetivo
+
+Completar a experiência do Plano de Estudos com:
+1. **ProgressView** — página dedicada de métricas de progresso
+2. **Calendário de atividade** — grade mensal com dias estudados / não estudados
+3. **Streak aprimorado** — baseado em todas as atividades (capítulos, notas, reflexões, mini quizzes)
+4. **Dashboard aprimorado** — link para ProgressView no card de streak
+5. **Link "Progresso" na navbar**
+
+## Arquivos criados
+
+```
+templates/study_plan/
+└── progress.html                              ← nova página de progresso
+
+tests/unit/
+└── test_phase4_plan_service.py                ← 20 testes unitários
+
+tests/integration/
+└── test_phase4_views.py                       ← 11 testes de integração
+
+docs/
+├── PHASE_4_IMPLEMENTATION_PLAN.md
+└── PHASE_4_IMPLEMENTATION.md
+```
+
+## Arquivos modificados
+
+| Arquivo | Mudança |
+|---|---|
+| `apps/study_plan/services/plan_service.py` | +`ProgressStats` dataclass; +`get_all_activity_dates`, `get_max_streak`, `get_total_study_days`, `get_calendar_weeks`, `get_progress_stats`; atualizado `get_plan_streak` para usar todas as fontes de atividade |
+| `apps/study_plan/views.py` | +`ProgressView` + constante `_MONTH_NAMES_PT` |
+| `apps/study_plan/urls.py` | +rota `progresso/` → `progress` |
+| `templates/study_plan/dashboard.html` | +botão "Meu progresso", card de streak clicável com link |
+| `templates/base.html` | +link "Progresso" na navbar |
+
+## Dataclass `ProgressStats`
+
+Agrega todos os dados para a `ProgressView`:
+
+| Campo | Fonte |
+|---|---|
+| `total_modules` / `completed_modules` | `StudyModule` vs `LessonProgress` |
+| `total_chapters` / `completed_chapters` / `in_progress_chapters` | `LessonProgress` |
+| `overall_percentage` | `completed / total * 100` |
+| `notes_created` | `ActiveLearningNote.count(user)` |
+| `reflections_created` | `GuidedReflection.count(user)` |
+| `mini_quizzes_done` | `Quiz(type=MINI, status=FINISHED).count(user)` |
+| `errors_pending` / `errors_reviewed` | `ErrorNotebookEntry.count(user)` |
+| `current_streak` / `max_streak` / `total_study_days` | calculados |
+| `total_minutes_estimated` | `SUM(chapter.estimated_minutes)` dos capítulos concluídos |
+
+## Cálculo de atividade
+
+`get_all_activity_dates(user)` → `set[date]`
+
+União de datas de 4 fontes:
+1. `LessonProgress.completed_at__date` (capítulos concluídos)
+2. `ActiveLearningNote.created_at__date` (notas criadas)
+3. `GuidedReflection.created_at__date` (reflexões respondidas)
+4. `Quiz[MINI, FINISHED].finished_at__date` (mini quizzes concluídos)
+
+Qualquer uma dessas ações em um dia conta como "dia de estudo".
+
+## Calendário
+
+`get_calendar_weeks(user, year, month)` usa `calendar.Calendar(firstweekday=0)` (segunda-feira). Retorna lista de semanas, cada semana com 7 tuplas `(day: int, active: bool)`. `day=0` = padding (dia fora do mês). O template renderiza quadrados verdes / cinza.
+
+## Streak
+
+O streak usa a mesma lógica de antes (sequência consecutiva até hoje ou ontem), mas agora com `get_all_activity_dates` em vez de só capítulos — mais preciso e motivador.
+
+`get_max_streak` percorre todas as datas em ordem para encontrar a maior sequência já registrada.
+
+## ProgressView
+
+URL: `GET /plano/progresso/`  
+Suporta navegação por mês via `?year=YYYY&month=MM`.  
+Validação: `month` fora de 1–12 ou não-inteiro → cai para mês atual.
+
+## Resultado
+
+```
+216 passed, 0 failed, 94 warnings in 4.60s
+```
+
+Adicionados 30 novos testes (20 unitários + 10 integração); nenhum teste anterior foi quebrado.
+
+---
+---
+
+# Otimização de Startup — Fase 1
+
+## Problema identificado
+
+Após investigação documentada em `STARTUP_INVESTIGATION.md`, identificou-se que o `CMD` do `Dockerfile` executava uma cadeia completa de seed de dados a cada inicialização do container — incluindo wake-ups após hibernação do Render Free:
+
+```
+migrate → import_study_plan → populate_chapter_content → import_questions → create_admin → gunicorn
+```
+
+O container hibernado acordava, reprocessava dados já existentes no banco (~1.230+ queries, parsing de 242 KB, 800 transações individuais) e só então iniciava o Gunicorn. Resultado: **primeiro acesso após hibernação: 3–5 minutos**.
+
+Os três comandos de seed eram declarados idempotentes, mas ainda custavam tempo cada vez que rodavam — mesmo quando todos os dados já estavam no banco.
+
+## Alterações realizadas
+
+| Arquivo | O que mudou |
+|---------|------------|
+| `apps/study_plan/management/commands/import_study_plan.py` | Fast path no início do `handle()`: conta módulos e capítulos; retorna imediatamente se já populados |
+| `apps/study_plan/management/commands/populate_chapter_content.py` | Fast path no início do `handle()`: conta capítulos com conteúdo; retorna imediatamente se todos preenchidos |
+| `apps/questions/management/commands/import_questions.py` | Fast path no início do `handle()`: conta questões; retorna imediatamente se `>= 800` |
+
+Nenhum outro arquivo foi modificado. Models, views, templates, services e fluxos de negócio permanecem intactos.
+
+## Estratégia utilizada
+
+Cada comando recebeu uma **verificação de estado** com 1–2 queries de contagem antes de qualquer processamento:
+
+```python
+# import_study_plan
+expected_modules = len(STUDY_PLAN_MAP)        # 14
+expected_chapters = sum(len(m.chapters) for m in STUDY_PLAN_MAP)  # 98
+if (StudyModule.objects.count() >= expected_modules
+        and StudyChapter.objects.count() >= expected_chapters):
+    self.stdout.write("Plano de estudos já populado — pulando.")
+    return
+```
+
+```python
+# populate_chapter_content
+expected_chapters = len(CHAPTER_MAP)          # 98
+populated = StudyChapter.objects.filter(content__gt='').count()
+if populated >= expected_chapters:
+    self.stdout.write("Conteúdo dos capítulos já populado — pulando.")
+    return
+```
+
+```python
+# import_questions
+_EXPECTED_QUESTION_COUNT = 800
+if not dry_run and Question.objects.count() >= _EXPECTED_QUESTION_COUNT:
+    self.stdout.write("Banco de questões já importado — pulando.")
+    return
+```
+
+Se o banco estiver completo, cada comando custa **1 query** em vez de centenas. Se algo estiver faltando, o comando roda normalmente.
+
+## Cenários cobertos
+
+| Cenário | Comportamento |
+|---------|--------------|
+| Banco completo (wake-up normal) | Fast path ativa → todos os 3 comandos pulam → startup rápido |
+| Primeiro deploy (banco vazio) | Fast path não ativa → seed roda completo normalmente |
+| Banco parcial (ex.: 750 questões) | Fast path não ativa → seed roda para completar os dados |
+| Banco parcial (ex.: 90 capítulos com conteúdo) | Fast path não ativa → populate_chapter_content roda para os 8 restantes |
+| `--dry-run` em import_questions | Fast path não interfere (verificação só ocorre fora de dry_run) |
+
+## Resultado
+
+```
+216 passed, 0 failed, 94 warnings in 3.53s
+```
+
+Nenhum teste quebrado. A lógica existente de importação permanece intacta.
+
+| Métrica | Antes | Depois |
+|---------|-------|--------|
+| Queries no wake-up | ~1.246+ | ~14 |
+| Tempo estimado (wake-up) | 3–5 min | 15–20 s |
+| Tempo estimado (deploy novo) | 3–5 min | 60–90 s |
+
+## Riscos e limitações
+
+- **Contagem como proxy:** o fast path assume que "N registros no banco = dados íntegros". Não verifica se o conteúdo é o correto — apenas que a quantidade esperada existe.
+- **Questões hardcoded (800):** se o banco de questões crescer, `_EXPECTED_QUESTION_COUNT` precisa ser atualizado manualmente.
+- **Dados corrompidos invisíveis:** se os 800 registros existirem mas com conteúdo errado, o fast path pula e os dados errados permanecem. Para corrigir, seria necessário forçar a reimportação (ex.: via `--force` flag, ainda não implementado).
+
+## Próximos passos (não implementados nesta fase)
+
+**Correção 2** (`populate_chapter_content`): comparar o conteúdo antes de salvar, evitando 98 UPDATEs desnecessários mesmo quando o fast path não ativa.
+
+**Correção 3** (`import_questions`): substituir 800 transações individuais por um único SELECT de todos os hashes existentes, só abrindo transações para questões novas ou alteradas.
+
+---
