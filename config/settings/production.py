@@ -22,12 +22,14 @@ DATABASES = {
 # SECURE_SSL_REDIRECT entra em loop infinito de redirecionamento.
 SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
 
-SECURE_HSTS_SECONDS = 31536000
-SECURE_HSTS_INCLUDE_SUBDOMAINS = True
-SECURE_HSTS_PRELOAD = True
-SECURE_SSL_REDIRECT = True
-SESSION_COOKIE_SECURE = True
-CSRF_COOKIE_SECURE = True
+# Desativado temporariamente para validação de deploy via HTTP.
+# Reativar quando Nginx + HTTPS estiverem configurados (Fase 4).
+SECURE_SSL_REDIRECT = False
+SECURE_HSTS_SECONDS = 0
+SECURE_HSTS_INCLUDE_SUBDOMAINS = False
+SECURE_HSTS_PRELOAD = False
+SESSION_COOKIE_SECURE = False
+CSRF_COOKIE_SECURE = False
 
 # Django 4.x exige origins confiáveis para aceitar POST sob HTTPS.
 # Sem isto, todos os formulários falham com 403 CSRF em produção.
