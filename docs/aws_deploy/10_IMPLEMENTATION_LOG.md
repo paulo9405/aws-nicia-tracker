@@ -7,9 +7,14 @@
 
 ## Fase atual
 
+**Fase 2 — Domínio, HTTPS e segurança**
+**Status:** Não iniciada
+**Data início da Fase 2:** —
+
 **Fase 1 — Deploy inicial na EC2 com Docker**
-**Status:** Em andamento (EC2 pronta, Docker instalado, deploy pendente)
-**Data início da Fase 1:** 2026-07-02
+**Status:** Concluída
+**Data início:** 2026-07-02
+**Data conclusão:** 2026-07-03
 
 **Fase 0 — Preparação e documentação inicial**
 **Status:** Concluída
@@ -167,12 +172,21 @@ O objetivo desta fase é documentação, análise e configuração da conta AWS.
 - [x] Instalar Docker Compose v5.3.0 na EC2 (manual — plugin não disponível nos repos do AL2023) *(2026-07-02)*
 - [x] Clonar repositório na EC2 *(2026-07-02)*
 - [x] Analisar Dockerfile, docker-compose.yml e production.py *(2026-07-02)*
-- [ ] Ajustar `production.py` para tornar `sslmode` configurável via env var
-- [ ] Criar `docker-compose.prod.yml` para EC2 (PostgreSQL em container + Django)
-- [ ] Criar `.env` na EC2 com variáveis de produção
-- [ ] Build da imagem Docker na EC2
-- [ ] Subir containers com `docker compose -f docker-compose.prod.yml up -d`
-- [ ] Verificar acesso via IP público (porta 80)
+- [x] Ajustar `production.py`: `DB_SSLMODE` configurável e HTTPS desativado temporariamente *(2026-07-03)*
+- [x] Criar `docker-compose.prod.yml` para EC2 com imagem pré-construída *(2026-07-03)*
+- [x] Criar `.env` na EC2 com variáveis de produção *(2026-07-03)*
+- [x] Build da imagem Docker na EC2 *(2026-07-03)*
+- [x] Containers rodando: Gunicorn + PostgreSQL healthy *(2026-07-03)*
+- [x] `curl http://localhost:8000/conta/login/` retorna HTTP 200 *(2026-07-03)*
+- [x] Nginx instalado e configurado como proxy reverso (porta 80 → 8000) *(2026-07-03)*
+- [x] `http://3.148.15.93/conta/login/` acessível externamente via porta 80 *(2026-07-03)*
+- [ ] Fechar porta 8000 no Security Group (Gunicorn não deve ser exposto diretamente)
+- [ ] Registrar domínio e apontar DNS para o Elastic IP `3.148.15.93`
+- [ ] Instalar Certbot e obter certificado SSL (Let's Encrypt)
+- [ ] Configurar Nginx para HTTPS (porta 443) e redirect HTTP → HTTPS
+- [ ] Reativar `SECURE_SSL_REDIRECT`, HSTS e secure cookies em `production.py`
+- [ ] Configurar renovação automática do certificado
+- [ ] Migrar PostgreSQL do container para RDS
 
 ---
 
@@ -212,6 +226,9 @@ O objetivo desta fase é documentação, análise e configuração da conta AWS.
 | 2026-07-02 | SO escolhido (Amazon Linux 2023) difere do plano (Ubuntu 22.04) | Sem erro — decisão consciente; impacta comandos futuros de Nginx e Certbot (usar `dnf` em vez de `apt`) |
 | 2026-07-02 | `docker-compose-plugin` não disponível nos repositórios do Amazon Linux 2023 | Instalação manual do binário oficial do GitHub em `/usr/local/lib/docker/cli-plugins/` |
 | 2026-07-02 | `sslmode=require` em `production.py` incompatível com PostgreSQL em container (sem SSL) | Tornar `sslmode` configurável via env var `DB_SSLMODE`; usar `disable` no container, `require` no RDS |
+| 2026-07-03 | `SECURE_SSL_REDIRECT=True` causava 301 para HTTPS inexistente | Desativado temporariamente junto com HSTS e secure cookies; reativar na Fase 4 (Nginx + HTTPS) |
+| 2026-07-03 | `docker compose restart` não recarrega variáveis do `.env` | Usar `docker compose down && up -d` para recarregar env vars |
+| 2026-07-03 | `curl http://localhost/` retorna página padrão do Nginx | Normal — `server_name localhost` não corresponde ao virtual host `3.148.15.93`; testar sempre com o IP real |
 
 ---
 
