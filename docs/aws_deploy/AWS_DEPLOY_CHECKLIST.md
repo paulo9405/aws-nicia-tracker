@@ -8,19 +8,19 @@
 ## Fase 0 — Preparação local e repositório
 
 ```
-[ ] Projeto clonado em diretório separado (aws-nicia ≠ projeto original)
-[ ] git log --all -S "PASSWORD" não retorna nada
-[ ] git log --all -S "SECRET_KEY" não retorna nada
-[ ] .env está no .gitignore (verificado com: git check-ignore .env)
-[ ] db.sqlite3 está no .gitignore
-[ ] media/ está no .gitignore
-[ ] .env.example está completo com todas as variáveis necessárias para AWS
-[ ] README_AWS.md criado na raiz explicando o propósito do repositório
-[ ] docs/aws_deploy/ criada com todos os documentos de planejamento
-[ ] Conta AWS criada
-[ ] MFA habilitado na conta root AWS
-[ ] IAM User criado para uso diário (não usar root)
-[ ] Billing alert configurado (ex.: USD 15/mês)
+[x] Projeto clonado em diretório separado (aws-nicia ≠ projeto original)
+[x] git log --all -S "PASSWORD" não retorna nada
+[x] git log --all -S "SECRET_KEY" não retorna nada
+[x] .env está no .gitignore (verificado com: git check-ignore .env)
+[x] db.sqlite3 está no .gitignore
+[x] media/ está no .gitignore
+[x] .env.example está completo com todas as variáveis necessárias para AWS
+[x] README_AWS.md criado na raiz explicando o propósito do repositório
+[x] docs/aws_deploy/ criada com todos os documentos de planejamento
+[x] Conta AWS criada
+[x] MFA habilitado na conta root AWS
+[x] IAM User criado para uso diário (paulo-aws-admin)
+[x] Billing alert configurado (USD 15/mês — alertas em 85%, 100% e previsão)
 ```
 
 ---
@@ -29,45 +29,45 @@
 
 ### Criação da EC2
 ```
-[ ] Região AWS selecionada (ex.: us-east-1 ou sa-east-1)
-[ ] AMI Ubuntu 22.04 LTS selecionada
-[ ] Tipo de instância: t2.micro (free tier)
-[ ] Key pair criado e baixado (.pem) para SSH
-[ ] Security Group criado com regras:
-    [ ] SSH (22) → seu IP apenas
-    [ ] HTTP (80) → 0.0.0.0/0
-    [ ] HTTPS (443) → 0.0.0.0/0
+[x] Região AWS selecionada (us-east-2 — Ohio)
+[x] AMI selecionada (Amazon Linux 2023 — em vez de Ubuntu 22.04; usar dnf, não apt)
+[x] Tipo de instância: t3.micro (free tier — geração mais nova que t2.micro)
+[x] Key pair criado e baixado (nicia-track-key.pem) para SSH
+[x] Security Group criado com regras:
+    [x] SSH (22) → IP próprio apenas (177.36.193.61/32)
+    [x] HTTP (80) → 0.0.0.0/0
+    [x] HTTPS (443) → 0.0.0.0/0
 [ ] EBS: 20GB gp3
-[ ] EC2 criada e rodando
-[ ] Elastic IP criado e associado à EC2
-[ ] Acesso SSH testado: ssh -i chave.pem ubuntu@<IP>
+[x] EC2 criada e rodando
+[x] Elastic IP criado (3.148.15.93) e associado à EC2
+[x] Acesso SSH testado: ssh -i nicia-track-key.pem ec2-user@3.148.15.93
 ```
 
 ### Instalação de dependências na EC2
 ```
-[ ] Docker Engine instalado
-[ ] Docker Compose plugin instalado
-[ ] Git instalado
-[ ] docker run hello-world funciona sem sudo
+[x] Docker Engine instalado (v25.0.14)
+[x] Docker Compose instalado (v5.3.0 — instalação manual; plugin não disponível nos repos AL2023)
+[x] Git instalado (v2.50.1)
+[x] docker ps funciona sem sudo (ec2-user no grupo docker)
 ```
 
 ### Deploy da aplicação
 ```
-[ ] Repositório clonado na EC2 (/home/ubuntu/aws-nicia)
-[ ] .env criado na EC2 com permissão 600
-[ ] .env contém SECRET_KEY forte (50+ chars)
-[ ] .env contém DEBUG=False
-[ ] .env contém DJANGO_SETTINGS_MODULE=config.settings.production
-[ ] .env contém ALLOWED_HOSTS=<IP da EC2>
-[ ] .env contém CSRF_TRUSTED_ORIGINS=http://<IP da EC2>:8000
-[ ] docker build -t nicia-track:latest . (sem erros)
-[ ] Container iniciado (docker ps mostra running)
-[ ] docker logs nicia-track não mostra erros fatais
-[ ] Gunicorn booting confirmado nos logs
-[ ] curl http://localhost:8000/conta/login/ retorna 200
-[ ] Acesso via browser: http://<IP>:8000/ funciona
-[ ] Login com admin funciona
-[ ] Questões aparecem no sistema
+[x] Repositório clonado na EC2
+[x] .env criado na EC2 com permissão 600
+[x] .env contém SECRET_KEY forte (50+ chars)
+[x] .env contém DEBUG=False
+[x] .env contém DJANGO_SETTINGS_MODULE=config.settings.production
+[x] .env contém ALLOWED_HOSTS
+[x] .env contém CSRF_TRUSTED_ORIGINS
+[x] docker build -t nicia-track:latest . (sem erros)
+[x] Containers rodando: Gunicorn + PostgreSQL healthy (docker compose ps)
+[x] docker logs não mostra erros fatais
+[x] Gunicorn booting confirmado nos logs
+[x] curl http://localhost:8000/conta/login/ retorna 200
+[x] Acesso via browser: http://3.148.15.93/ funciona
+[x] Login com admin funciona
+[x] Questões aparecem no sistema
 ```
 
 ---
@@ -98,6 +98,7 @@
 [ ] .env atualizado: PGDATABASE=nicia_track
 [ ] .env atualizado: PGUSER=<master-user>
 [ ] .env atualizado: PGPASSWORD=<senha>
+[ ] DB_SSLMODE=require no .env (production.py usa sslmode configurável)
 [ ] Container reiniciado com novas variáveis
 [ ] docker exec nicia-track python manage.py dbshell (conecta sem erro)
 [ ] python manage.py migrate roda sem erro
@@ -143,34 +144,34 @@
 
 ### DNS e Elastic IP
 ```
-[ ] Domínio registrado (ou subdomínio disponível)
-[ ] Registro DNS tipo A apontando para Elastic IP da EC2
-[ ] nslookup <domínio> retorna o IP correto
+[x] Domínio registrado (nicia.paulodev.net via Cloudflare)
+[x] Registro DNS tipo A apontando para Elastic IP 3.148.15.93
+[x] nslookup nicia.paulodev.net retorna o IP correto
 ```
 
 ### Nginx
 ```
-[ ] Nginx instalado na EC2
-[ ] Arquivo de configuração criado em /etc/nginx/sites-available/
-[ ] Link simbólico em sites-enabled
-[ ] nginx -t passa (sem erros de sintaxe)
-[ ] nginx recarregado
-[ ] http://<dominio>/ funciona (ainda sem HTTPS)
+[x] Nginx instalado na EC2
+[x] Arquivo de configuração criado em /etc/nginx/sites-available/
+[x] nginx -t passa (sem erros de sintaxe)
+[x] nginx recarregado
+[x] http://nicia.paulodev.net/ funciona
 ```
 
 ### HTTPS com Let's Encrypt
 ```
-[ ] Certbot instalado
-[ ] certbot --nginx -d <dominio> executado com sucesso
-[ ] Certificado obtido
-[ ] https://<dominio>/ funciona com cadeado verde
-[ ] http:// redireciona para https:// automaticamente
-[ ] Renovação automática configurada (crontab ou systemd timer)
-[ ] ALLOWED_HOSTS=<dominio> atualizado no .env
-[ ] CSRF_TRUSTED_ORIGINS=https://<dominio> atualizado no .env
-[ ] Container reiniciado com novas variáveis
-[ ] Formulários funcionam (sem 403)
-[ ] curl -I https://<dominio> mostra Strict-Transport-Security
+[x] Certbot instalado
+[x] certbot --nginx -d nicia.paulodev.net executado com sucesso
+[x] Certificado obtido
+[x] https://nicia.paulodev.net/ funciona com cadeado verde
+[x] http:// redireciona para https:// automaticamente
+[x] Renovação automática configurada (certbot renew --dry-run validado)
+[x] ALLOWED_HOSTS=nicia.paulodev.net atualizado no .env
+[x] CSRF_TRUSTED_ORIGINS=https://nicia.paulodev.net atualizado no .env
+[x] Container reiniciado com novas variáveis
+[x] Formulários funcionam (sem 403)
+[x] curl -I https://nicia.paulodev.net mostra Strict-Transport-Security
+[x] Porta 8000 fechada no Security Group (nunca foi aberta — confirmado)
 ```
 
 ---
@@ -179,21 +180,20 @@
 
 ### Segurança
 ```
-[ ] DEBUG=False verificado em produção
-[ ] SECRET_KEY forte e única para produção
-[ ] .env não está no git (verificado)
-[ ] SSH restrito ao seu IP no Security Group
+[x] DEBUG=False verificado em produção
+[x] SECRET_KEY forte e única para produção
+[x] .env não está no git (verificado)
+[x] SSH restrito ao IP próprio no Security Group (177.36.193.61/32)
 [ ] Acesso SSH por senha desabilitado (apenas key pair)
 [ ] fail2ban instalado (ou equivalente)
-[ ] RDS não acessível da internet (verificado)
-[ ] IAM: aplicação sem permissões desnecessárias
-[ ] MFA habilitado na conta root e IAM User principal
-[ ] Porta 8000 fechada no Security Group (apenas 80 e 443)
+[x] Porta 8000 fechada no Security Group
+[x] MFA habilitado na conta root e IAM User principal
+[ ] IAM: aplicação sem permissões desnecessárias (criar IAM User específico para S3 na Fase 3)
 ```
 
 ### Custos
 ```
-[ ] AWS Budget configurado (alerta em USD 15)
+[x] AWS Budget configurado (alerta em USD 15/mês)
 [ ] AWS Cost Explorer habilitado
 [ ] Procedimento de stop/teardown documentado
 [ ] Estimativa de custo mensal calculada
@@ -201,7 +201,7 @@
 
 ### Logs e monitoramento
 ```
-[ ] Logs do Gunicorn acessíveis (docker logs)
+[x] Logs do Gunicorn acessíveis (docker logs)
 [ ] Logs do Nginx acessíveis (/var/log/nginx/)
 [ ] Rotação de logs configurada
 [ ] CloudWatch métricas básicas da EC2 ativas
@@ -217,7 +217,7 @@
 ```
 [ ] 10_IMPLEMENTATION_LOG.md atualizado com todas as etapas
 [ ] README_AWS.md completo com arquitetura final
-[ ] Screenshots do AWS Console (EC2, RDS, S3, CloudWatch)
+[ ] Screenshots do AWS Console (EC2, Security Groups, Cloudflare DNS, HTTPS)
 [ ] Perguntas do 09_INTERVIEW_STUDY_GUIDE.md respondidas sem consulta
 [ ] Teste de destroy e rebuild: deletar recursos e recriar do zero
 [ ] Outro desenvolvedor consegue replicar seguindo este repositório

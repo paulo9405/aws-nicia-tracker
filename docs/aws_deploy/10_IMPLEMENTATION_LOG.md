@@ -7,9 +7,14 @@
 
 ## Fase atual
 
-**Fase 2 — Domínio, HTTPS e segurança**
+**Fase 3 — RDS, S3, CI/CD e monitoramento**
 **Status:** Não iniciada
-**Data início da Fase 2:** —
+**Data início da Fase 3:** —
+
+**Fase 2 — Domínio, HTTPS e segurança**
+**Status:** Concluída
+**Data início:** 2026-07-03
+**Data conclusão:** 2026-07-03
 
 **Fase 1 — Deploy inicial na EC2 com Docker**
 **Status:** Concluída
@@ -55,6 +60,78 @@
 - `docs/aws_deploy/10_IMPLEMENTATION_LOG.md`
 - `docs/aws_deploy/AWS_DEPLOY_CHECKLIST.md`
 - `README_AWS.md`
+
+### 2026-07-03 — Migração de dados: Neon PostgreSQL → EC2 PostgreSQL
+
+**Fase:** 2
+
+**O que foi feito:**
+- Backup preventivo do banco AWS antes de qualquer alteração
+- Validação de acesso ao Neon via `psql` (25 tabelas encontradas)
+- Dump gerado com container temporário `postgres:18` (incompatibilidade de versão impediu uso do `pg_dump` local)
+- Comparação de contagens: progresso dos alunos (`lessonprogress`: 16, `useranswer`: 85) existia no Neon mas não na AWS
+- Schema limpo (`DROP SCHEMA public CASCADE`) para evitar conflitos
+- Restore executado também com container `postgres:18` na rede Docker do container de destino
+- Validação pós-restore: 25 tabelas, 16 lessonprogress, 85 useranswer, 3 usuários (incluindo niciadijkinga@hotmail.com)
+
+**Problemas encontrados:**
+- `pg_dump` local (v16) não aceita exportar banco PostgreSQL 18 do Neon
+- `pg_restore` local (v16) não consegue ler dump gerado pelo pg_dump 18 (`unsupported version 1.16`)
+
+**Como foi resolvido:**
+- Container temporário `postgres:18` para ambos dump e restore
+- Para o restore: descobrir a rede Docker do container de banco e conectar o container temporário na mesma rede via `--network`
+
+**Decisões técnicas:**
+- `--no-owner` no pg_restore (objetos do Neon como `neon_superuser` não existem no PostgreSQL local)
+- Avisos sobre `transaction_timeout`, `cloud_admin` e `ALTER DEFAULT PRIVILEGES` são normais — infraestrutura Neon-específica
+
+**Arquivos alterados:**
+- `docs/aws_deploy/11_DATABASE_MIGRATION_NEON_TO_EC2.md` (criado)
+
+**Próximo passo:**
+- Considerar migração para RDS quando houver necessidade de backups automáticos e maior resiliência
+
+---
+
+### 2026-07-03 — Domínio, HTTPS, Nginx e hardening de produção concluídos
+
+**Fase:** 2
+
+**O que foi feito:**
+- Cloudflare configurado como DNS para o domínio `nicia.paulodev.net`
+- Registro DNS tipo A apontando para Elastic IP `3.148.15.93`
+- Let's Encrypt + Certbot: certificado SSL obtido para `nicia.paulodev.net`
+- Nginx configurado para HTTPS (porta 443) com redirect automático HTTP → HTTPS
+- `ALLOWED_HOSTS` atualizado com o domínio real
+- `CSRF_TRUSTED_ORIGINS` atualizado com `https://nicia.paulodev.net`
+- `SECURE_SSL_REDIRECT`, HSTS e secure cookies reativados em `production.py`
+- Renovação automática do certificado configurada (certbot)
+- Porta 8000 confirmada como fechada no Security Group (nunca foi aberta — já estava correta)
+- Validação final: `https://nicia.paulodev.net` acessível com cadeado verde
+- Testes: `curl -I https://nicia.paulodev.net` e `sudo certbot renew --dry-run` executados com sucesso
+
+**Arquitetura final confirmada:**
+```
+Internet → 80/443 → Nginx → localhost:8000 → Gunicorn → Django → PostgreSQL (container)
+```
+
+**Security Group da EC2 (estado final):**
+```
+22/TCP  (SSH)   → 177.36.193.61/32 (IP próprio)
+80/TCP  (HTTP)  → 0.0.0.0/0
+443/TCP (HTTPS) → 0.0.0.0/0
+```
+Porta 8000 não exposta externamente.
+
+**Problemas encontrados:**
+- Nenhum nesta etapa.
+
+**Próximo passo:**
+- Fase 3: backup automático do PostgreSQL, migração para RDS, S3 para media files,
+  CloudWatch, CI/CD com GitHub Actions.
+
+---
 
 ### 2026-07-02 — EC2 criada, Elastic IP, SSH e Docker instalado
 
@@ -150,10 +227,12 @@ O objetivo desta fase é documentação, análise e configuração da conta AWS.
 | Decisão | Motivo |
 |---|---|
 | Manter Dockerfile original | Não alterar código sem necessidade — funciona para Render, adaptação mínima para AWS |
-| WhiteNoise para static files na Fase 1 | Já está configurado e funciona; S3 fica para Fase 3 |
+| WhiteNoise para static files na Fase 1 | Já está configurado e funciona; S3 fica para fase posterior |
 | Separar media files em S3 antes de static | Media files têm risco real de perda; static é opcional |
 | RDS Multi-AZ desativado | Laboratório — custo dobra desnecessariamente |
 | t2.micro / db.t3.micro | Free tier — custo zero nos primeiros 12 meses |
+| Cloudflare como DNS (em vez de Route 53) | Já tinha conta; Cloudflare oferece proteção DDoS e CDN gratuitos |
+| PostgreSQL em container (não RDS) nas Fases 1-2 | Validar o stack completo antes de adicionar complexidade do RDS |
 
 ---
 
@@ -180,13 +259,19 @@ O objetivo desta fase é documentação, análise e configuração da conta AWS.
 - [x] `curl http://localhost:8000/conta/login/` retorna HTTP 200 *(2026-07-03)*
 - [x] Nginx instalado e configurado como proxy reverso (porta 80 → 8000) *(2026-07-03)*
 - [x] `http://3.148.15.93/conta/login/` acessível externamente via porta 80 *(2026-07-03)*
-- [ ] Fechar porta 8000 no Security Group (Gunicorn não deve ser exposto diretamente)
-- [ ] Registrar domínio e apontar DNS para o Elastic IP `3.148.15.93`
-- [ ] Instalar Certbot e obter certificado SSL (Let's Encrypt)
-- [ ] Configurar Nginx para HTTPS (porta 443) e redirect HTTP → HTTPS
-- [ ] Reativar `SECURE_SSL_REDIRECT`, HSTS e secure cookies em `production.py`
-- [ ] Configurar renovação automática do certificado
+- [x] Porta 8000 confirmada como fechada no Security Group *(2026-07-03)*
+- [x] Domínio `nicia.paulodev.net` registrado e apontado via Cloudflare para `3.148.15.93` *(2026-07-03)*
+- [x] Certbot instalado e certificado SSL obtido (Let's Encrypt) *(2026-07-03)*
+- [x] Nginx configurado para HTTPS (porta 443) e redirect HTTP → HTTPS *(2026-07-03)*
+- [x] `ALLOWED_HOSTS` e `CSRF_TRUSTED_ORIGINS` atualizados com o domínio *(2026-07-03)*
+- [x] `SECURE_SSL_REDIRECT`, HSTS e secure cookies reativados em `production.py` *(2026-07-03)*
+- [x] Renovação automática do certificado configurada *(2026-07-03)*
+- [x] `https://nicia.paulodev.net` acessível com cadeado verde *(2026-07-03)*
 - [ ] Migrar PostgreSQL do container para RDS
+- [ ] Configurar backup automático do banco
+- [ ] S3 para media files (avatares)
+- [ ] CloudWatch: logs centralizados e alarme de CPU
+- [ ] CI/CD com GitHub Actions
 
 ---
 
