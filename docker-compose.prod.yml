@@ -16,10 +16,7 @@ services:
     restart: unless-stopped
 
   web:
-    build:
-      context: .
-      args:
-        SECRET_KEY: dummy-build-key-for-collectstatic
+    image: aws-nicia-web:latest
     env_file: .env
     ports:
       - "8000:8000"
