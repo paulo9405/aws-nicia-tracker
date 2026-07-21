@@ -401,6 +401,44 @@ AVICULTURA_MAP: list[ModuleDef] = [
                        ["revisao", "flashcards", "epidemiologia"]),
         ],
     ),
+    ModuleDef(
+        order=AVICULTURA_ORDER_BASE + 10,  # 25 (reordenar no fim: Anatomia é base, deve vir no topo)
+        title="Avicultura — Anatomia, Fisiologia e Imunologia",
+        slug="avicultura-anatomia",
+        master_file="avicultura/ESTUDO_NICIA/AVICULTURA_ANATOMIA_MASTER.md",
+        subject_name="Avicultura — Anatomia e Fisiologia",
+        subject_slug="avicultura-anatomia",
+        subject_color="#5a6a7a",
+        study_phase="1",
+        estimated_hours=12.0,
+        icon="🫀",
+        description=(
+            "Base conceitual: sistemas (digestório, respiratório, reprodutor, "
+            "cardiovascular, urinário, nervoso, locomotor), termorregulação, formação "
+            "do ovo, imunologia, desenvolvimento embrionário e imunidade materna. "
+            "Condensado do Módulo 2 da base."
+        ),
+        chapters=[
+            ChapterDef(1, "Sistema digestório", 1, 30,
+                       ["digestorio", "papo", "moela", "cecos", "acido-urico"]),
+            ChapterDef(2, "Sistema respiratório", 2, 30,
+                       ["respiratorio", "sacos-aereos", "fluxo-unidirecional", "capilares-aereos"]),
+            ChapterDef(3, "Sistema reprodutivo e fisiologia da reprodução", 3, 35,
+                       ["reprodutivo", "oviduto", "infundibulo", "ovulacao", "fotoperiodo"]),
+            ChapterDef(4, "Formação do ovo", 4, 25,
+                       ["formacao-do-ovo", "casca", "camara-de-ar", "cutícula", "gema"]),
+            ChapterDef(5, "Cardiovascular, urinário, nervoso e locomotor", 5, 30,
+                       ["cardiovascular", "urinario", "nervoso", "locomotor", "osso-medular"]),
+            ChapterDef(6, "Termorregulação", 6, 25,
+                       ["termorregulacao", "estresse-termico", "ofegacao", "alcalose"]),
+            ChapterDef(7, "Imunologia aviária", 7, 35,
+                       ["imunologia", "bursa-de-fabricius", "timo", "igy", "imunossupressao"]),
+            ChapterDef(8, "Desenvolvimento embrionário e imunidade materna", 8, 30,
+                       ["desenvolvimento-embrionario", "cam", "imunidade-materna", "mda", "interferencia-vacinal"]),
+            ChapterDef(9, "Revisão rápida e flashcards", 9, 20,
+                       ["revisao", "flashcards", "anatomia", "fisiologia"]),
+        ],
+    ),
 ]
 
 
