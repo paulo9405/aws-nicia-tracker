@@ -207,6 +207,41 @@ AVICULTURA_MAP: list[ModuleDef] = [
                        ["revisao", "flashcards", "nutricao"]),
         ],
     ),
+    ModuleDef(
+        order=AVICULTURA_ORDER_BASE + 4,  # 19
+        title="Avicultura — Biossegurança",
+        slug="avicultura-biosseguranca",
+        master_file="avicultura/ESTUDO_NICIA/AVICULTURA_BIOSSEGURANCA_MASTER.md",
+        subject_name="Avicultura — Biossegurança",
+        subject_slug="avicultura-biosseguranca",
+        subject_color="#3a8a6a",
+        study_phase="1",
+        estimated_hours=10.0,
+        icon="🛡️",
+        description=(
+            "O escudo sanitário: conceitos, barreira sanitária, limpeza e "
+            "desinfecção, controle de pragas, insumos, rigor por setor e "
+            "monitoramento/contingência. Condensado do Módulo 8 da base."
+        ),
+        chapters=[
+            ChapterDef(1, "Conceitos e princípios", 1, 25,
+                       ["biosseguranca", "bioexclusao", "biocontencao", "compartimentacao"]),
+            ChapterDef(2, "Controle de acesso e barreira sanitária", 2, 25,
+                       ["barreira-sanitaria", "fluxo-limpo-sujo", "rodoluvio", "pediluvio", "downtime"]),
+            ChapterDef(3, "Limpeza, desinfecção e vazio sanitário", 3, 35,
+                       ["limpeza-desinfeccao", "materia-organica", "desinfetantes", "vazio-sanitario"]),
+            ChapterDef(4, "Controle de pragas e vetores", 4, 30,
+                       ["pragas", "roedores", "cascudinho", "aves-silvestres", "mip"]),
+            ChapterDef(5, "Biossegurança de insumos e ambiente", 5, 25,
+                       ["insumos", "agua", "racao", "cama", "carcacas", "residuos"]),
+            ChapterDef(6, "Biossegurança por setor (diferenciação de rigor)", 6, 20,
+                       ["por-setor", "matrizes", "incubatorio", "pnsa", "elo-mais-fraco"]),
+            ChapterDef(7, "Monitoramento, auditoria e contingência", 7, 25,
+                       ["monitoramento", "auditoria", "rastreabilidade", "plano-de-contingencia"]),
+            ChapterDef(8, "Revisão rápida e flashcards", 8, 20,
+                       ["revisao", "flashcards", "biosseguranca"]),
+        ],
+    ),
 ]
 
 
