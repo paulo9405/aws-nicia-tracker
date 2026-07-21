@@ -135,6 +135,41 @@ AVICULTURA_MAP: list[ModuleDef] = [
                        ["revisao", "flashcards", "incubacao"]),
         ],
     ),
+    ModuleDef(
+        order=AVICULTURA_ORDER_BASE + 2,  # 17
+        title="Avicultura — Reprodução e Ovos Férteis",
+        slug="avicultura-reproducao",
+        master_file="avicultura/ESTUDO_NICIA/AVICULTURA_REPRODUCAO_MASTER.md",
+        subject_name="Avicultura — Reprodução",
+        subject_slug="avicultura-reproducao",
+        subject_color="#c06c3a",
+        study_phase="1",
+        estimated_hours=10.0,
+        icon="🐓",
+        description=(
+            "Matrizes e machos, fertilidade, produção e qualidade dos ovos férteis, "
+            "coleta/armazenamento e falhas reprodutivas. Base do elo matriz → ovo "
+            "fértil. Condensado do Módulo 6 da base documental de avicultura."
+        ),
+        chapters=[
+            ChapterDef(1, "Fisiologia reprodutiva aplicada (maturidade e fotoestimulação)", 1, 25,
+                       ["fisiologia-reprodutiva", "fotoestimulacao", "maturidade-sexual", "dark-out"]),
+            ChapterDef(2, "Manejo de matrizes (fêmeas)", 2, 30,
+                       ["matrizes", "restricao-alimentar", "uniformidade", "cv", "peso"]),
+            ChapterDef(3, "Manejo de machos", 3, 25,
+                       ["machos", "relacao-macho-femea", "spiking", "alimentacao-sexada"]),
+            ChapterDef(4, "Fertilidade e fecundação", 4, 30,
+                       ["fertilidade", "eclodibilidade", "ssts", "curva-de-fertilidade"]),
+            ChapterDef(5, "Produção e qualidade dos ovos férteis", 5, 30,
+                       ["producao-ovos-ferteis", "ovos-incubaveis", "qualidade-do-ovo", "ovos-de-chao"]),
+            ChapterDef(6, "Coleta, armazenamento e transporte de ovos férteis", 6, 25,
+                       ["coleta", "armazenamento", "zero-fisiologico", "sanitizacao", "transporte"]),
+            ChapterDef(7, "Falhas reprodutivas — diagnóstico de causa-raiz", 7, 25,
+                       ["falhas-reprodutivas", "queda-fertilidade", "queda-postura", "breakout"]),
+            ChapterDef(8, "Revisão rápida e flashcards", 8, 20,
+                       ["revisao", "flashcards", "reproducao"]),
+        ],
+    ),
 ]
 
 
