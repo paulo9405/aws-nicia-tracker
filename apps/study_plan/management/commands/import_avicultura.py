@@ -63,7 +63,7 @@ class ModuleDef:
 # ── Mapa da trilha de Avicultura (adicionar novos módulos aqui) ──────────────
 AVICULTURA_MAP: list[ModuleDef] = [
     ModuleDef(
-        order=AVICULTURA_ORDER_BASE + 2,  # 17 (Doenças após o eixo ovo→pintinho)
+        order=AVICULTURA_ORDER_BASE + 6,  # 21 (Doenças após o eixo ovo→pintinho e manejo/biossegurança)
         title="Avicultura — Doenças",
         slug="avicultura-doencas",
         master_file="avicultura/ESTUDO_NICIA/AVICULTURA_DOENCAS_MASTER.md",
@@ -98,7 +98,7 @@ AVICULTURA_MAP: list[ModuleDef] = [
         ],
     ),
     ModuleDef(
-        order=AVICULTURA_ORDER_BASE + 1,  # 16
+        order=AVICULTURA_ORDER_BASE + 2,  # 17
         title="Avicultura — Incubação e Incubatórios",
         slug="avicultura-incubacao",
         master_file="avicultura/ESTUDO_NICIA/AVICULTURA_INCUBACAO_MASTER.md",
@@ -136,7 +136,7 @@ AVICULTURA_MAP: list[ModuleDef] = [
         ],
     ),
     ModuleDef(
-        order=AVICULTURA_ORDER_BASE + 0,  # 15 (início do eixo: matriz → ovo fértil)
+        order=AVICULTURA_ORDER_BASE + 1,  # 16 (início do eixo: matriz → ovo fértil)
         title="Avicultura — Reprodução e Ovos Férteis",
         slug="avicultura-reproducao",
         master_file="avicultura/ESTUDO_NICIA/AVICULTURA_REPRODUCAO_MASTER.md",
@@ -208,7 +208,7 @@ AVICULTURA_MAP: list[ModuleDef] = [
         ],
     ),
     ModuleDef(
-        order=AVICULTURA_ORDER_BASE + 4,  # 19
+        order=AVICULTURA_ORDER_BASE + 5,  # 20
         title="Avicultura — Biossegurança",
         slug="avicultura-biosseguranca",
         master_file="avicultura/ESTUDO_NICIA/AVICULTURA_BIOSSEGURANCA_MASTER.md",
@@ -243,7 +243,7 @@ AVICULTURA_MAP: list[ModuleDef] = [
         ],
     ),
     ModuleDef(
-        order=AVICULTURA_ORDER_BASE + 5,  # 20
+        order=AVICULTURA_ORDER_BASE + 4,  # 19
         title="Avicultura — Manejo",
         slug="avicultura-manejo",
         master_file="avicultura/ESTUDO_NICIA/AVICULTURA_MANEJO_MASTER.md",
@@ -278,7 +278,7 @@ AVICULTURA_MAP: list[ModuleDef] = [
         ],
     ),
     ModuleDef(
-        order=AVICULTURA_ORDER_BASE + 6,  # 21
+        order=AVICULTURA_ORDER_BASE + 7,  # 22
         title="Avicultura — Programas Vacinais",
         slug="avicultura-vacinas",
         master_file="avicultura/ESTUDO_NICIA/AVICULTURA_VACINAS_MASTER.md",
@@ -309,7 +309,7 @@ AVICULTURA_MAP: list[ModuleDef] = [
         ],
     ),
     ModuleDef(
-        order=AVICULTURA_ORDER_BASE + 7,  # 22
+        order=AVICULTURA_ORDER_BASE + 8,  # 23
         title="Avicultura — Diagnóstico",
         slug="avicultura-diagnostico",
         master_file="avicultura/ESTUDO_NICIA/AVICULTURA_DIAGNOSTICO_MASTER.md",
@@ -340,7 +340,7 @@ AVICULTURA_MAP: list[ModuleDef] = [
         ],
     ),
     ModuleDef(
-        order=AVICULTURA_ORDER_BASE + 8,  # 23
+        order=AVICULTURA_ORDER_BASE + 9,  # 24
         title="Avicultura — Patologia e Necropsia",
         slug="avicultura-patologia",
         master_file="avicultura/ESTUDO_NICIA/AVICULTURA_PATOLOGIA_MASTER.md",
@@ -371,7 +371,7 @@ AVICULTURA_MAP: list[ModuleDef] = [
         ],
     ),
     ModuleDef(
-        order=AVICULTURA_ORDER_BASE + 9,  # 24
+        order=AVICULTURA_ORDER_BASE + 10,  # 25
         title="Avicultura — Epidemiologia e Medicina Preventiva",
         slug="avicultura-epidemiologia",
         master_file="avicultura/ESTUDO_NICIA/AVICULTURA_EPIDEMIOLOGIA_MASTER.md",
@@ -402,7 +402,7 @@ AVICULTURA_MAP: list[ModuleDef] = [
         ],
     ),
     ModuleDef(
-        order=AVICULTURA_ORDER_BASE + 10,  # 25 (reordenar no fim: Anatomia é base, deve vir no topo)
+        order=AVICULTURA_ORDER_BASE + 0,  # 15 (Anatomia é base — topo da trilha)
         title="Avicultura — Anatomia, Fisiologia e Imunologia",
         slug="avicultura-anatomia",
         master_file="avicultura/ESTUDO_NICIA/AVICULTURA_ANATOMIA_MASTER.md",
@@ -474,7 +474,7 @@ AVICULTURA_MAP: list[ModuleDef] = [
         ],
     ),
     ModuleDef(
-        order=AVICULTURA_ORDER_BASE + 12,  # 27
+        order=AVICULTURA_ORDER_BASE + 13,  # 28
         title="Avicultura — Bem-estar Animal",
         slug="avicultura-bem-estar",
         master_file="avicultura/ESTUDO_NICIA/AVICULTURA_BEMESTAR_MASTER.md",
@@ -505,7 +505,7 @@ AVICULTURA_MAP: list[ModuleDef] = [
         ],
     ),
     ModuleDef(
-        order=AVICULTURA_ORDER_BASE + 13,  # 28
+        order=AVICULTURA_ORDER_BASE + 12,  # 27
         title="Avicultura — Inspeção e Saúde Pública",
         slug="avicultura-inspecao",
         master_file="avicultura/ESTUDO_NICIA/AVICULTURA_INSPECAO_MASTER.md",
@@ -533,6 +533,130 @@ AVICULTURA_MAP: list[ModuleDef] = [
                        ["zoonoses", "one-health", "cadeia", "risco-ocupacional"]),
             ChapterDef(6, "Revisão rápida e flashcards", 6, 20,
                        ["revisao", "flashcards", "inspecao", "saude-publica"]),
+        ],
+    ),
+    ModuleDef(
+        order=AVICULTURA_ORDER_BASE + 14,  # 29
+        title="Avicultura — Panorama da Avicultura",
+        slug="avicultura-panorama",
+        master_file="avicultura/ESTUDO_NICIA/AVICULTURA_PANORAMA_MASTER.md",
+        subject_name="Avicultura — Panorama da Avicultura",
+        subject_slug="avicultura-panorama",
+        subject_color="#5a7a8a",
+        study_phase="1",
+        estimated_hours=6.0,
+        icon="🌎",
+        description=(
+            "Panorama do setor: história e industrialização, números da avicultura "
+            "brasileira (ABPA), cadeia produtiva e integração vertical, sistemas de "
+            "produção e a pirâmide genética. Condensado do Módulo 1 da base."
+        ),
+        chapters=[
+            ChapterDef(1, "História e evolução da avicultura", 1, 20,
+                       ["historia", "industrializacao", "embrapa", "panorama"]),
+            ChapterDef(2, "Avicultura brasileira: economia e posição mundial", 2, 25,
+                       ["abpa", "producao", "exportacao", "postura", "corte"]),
+            ChapterDef(3, "Cadeia produtiva e o modelo de integração", 3, 25,
+                       ["cadeia-produtiva", "integracao-vertical", "incubatorio", "cooperativa"]),
+            ChapterDef(4, "Sistemas de produção", 4, 25,
+                       ["sistemas", "cage-free", "free-range", "caipira", "organico"]),
+            ChapterDef(5, "Categorias genéticas e a pirâmide de produção", 5, 25,
+                       ["piramide-genetica", "linhas-puras", "bisavos", "matrizes", "pinto-de-um-dia"]),
+            ChapterDef(6, "Revisão rápida e flashcards", 6, 20,
+                       ["revisao", "flashcards", "panorama"]),
+        ],
+    ),
+    ModuleDef(
+        order=AVICULTURA_ORDER_BASE + 15,  # 30
+        title="Avicultura — Genética e Melhoramento",
+        slug="avicultura-genetica",
+        master_file="avicultura/ESTUDO_NICIA/AVICULTURA_GENETICA_MASTER.md",
+        subject_name="Avicultura — Genética e Melhoramento",
+        subject_slug="avicultura-genetica",
+        subject_color="#6a5a9a",
+        study_phase="1",
+        estimated_hours=6.0,
+        icon="🧬",
+        description=(
+            "Melhoramento genético aplicado: seleção e herdabilidade, heterose e "
+            "cruzamento de 4 vias, pirâmide genética, empresas e linhagens, fertilidade/"
+            "eclodibilidade, uniformidade e consanguinidade. Condensado do Módulo 3 da base."
+        ),
+        chapters=[
+            ChapterDef(1, "Conceitos de melhoramento (seleção, herdabilidade, ganho)", 1, 25,
+                       ["selecao", "herdabilidade", "ganho-genetico", "genomica", "correlacao"]),
+            ChapterDef(2, "Heterose e cruzamento", 2, 20,
+                       ["heterose", "vigor-hibrido", "four-way-cross", "cruzamento"]),
+            ChapterDef(3, "A pirâmide genética sob a ótica do melhoramento", 3, 20,
+                       ["piramide-genetica", "linhas-puras", "bisavos", "matrizes", "cascata"]),
+            ChapterDef(4, "Empresas e linhagens", 4, 20,
+                       ["linhagens", "ross", "cobb", "hy-line", "lohmann"]),
+            ChapterDef(5, "Fertilidade, eclodibilidade, uniformidade e consanguinidade", 5, 30,
+                       ["fertilidade", "eclodibilidade", "uniformidade", "cv", "consanguinidade"]),
+            ChapterDef(6, "Revisão rápida e flashcards", 6, 20,
+                       ["revisao", "flashcards", "genetica"]),
+        ],
+    ),
+    ModuleDef(
+        order=AVICULTURA_ORDER_BASE + 16,  # 31
+        title="Avicultura — Gestão da Produção e de Pessoas",
+        slug="avicultura-gestao",
+        master_file="avicultura/ESTUDO_NICIA/AVICULTURA_GESTAO_MASTER.md",
+        subject_name="Avicultura — Gestão da Produção e de Pessoas",
+        subject_slug="avicultura-gestao",
+        subject_color="#8a7a4a",
+        study_phase="1",
+        estimated_hours=6.0,
+        icon="📊",
+        description=(
+            "Gestão por indicadores (corte, postura, reprodução/incubação), análise de "
+            "dados e causa raiz, e gestão de pessoas: treinamento, POPs, cultura de "
+            "biossegurança, liderança e responsabilidade técnica. Merge dos Módulos 15 e 16 da base."
+        ),
+        chapters=[
+            ChapterDef(1, "Indicadores de desempenho (corte) e de postura", 1, 25,
+                       ["fcr", "iep", "cv", "postura", "indicadores"]),
+            ChapterDef(2, "Indicadores de reprodução e incubação", 2, 25,
+                       ["fertilidade", "eclodibilidade", "janela-de-nascimento", "spiking", "incubatorio"]),
+            ChapterDef(3, "Da análise de dados à decisão (gestão da produção)", 3, 25,
+                       ["causa-raiz", "benchmarking", "pdca", "rastreabilidade", "dashboards"]),
+            ChapterDef(4, "Treinamento, POPs e cultura de biossegurança", 4, 25,
+                       ["pops", "treinamento", "cultura-de-biosseguranca", "just-culture", "near-miss"]),
+            ChapterDef(5, "Liderança, integrados e responsabilidade técnica", 5, 25,
+                       ["lideranca", "integrados", "responsabilidade-tecnica", "seguranca-do-trabalho", "rt"]),
+            ChapterDef(6, "Revisão rápida e flashcards", 6, 20,
+                       ["revisao", "flashcards", "gestao"]),
+        ],
+    ),
+    ModuleDef(
+        order=AVICULTURA_ORDER_BASE + 17,  # 32
+        title="Avicultura — Temas Atuais",
+        slug="avicultura-temas-atuais",
+        master_file="avicultura/ESTUDO_NICIA/AVICULTURA_TEMAS_ATUAIS_MASTER.md",
+        subject_name="Avicultura — Temas Atuais",
+        subject_slug="avicultura-temas-atuais",
+        subject_color="#3a8a8a",
+        study_phase="1",
+        estimated_hours=6.0,
+        icon="📰",
+        description=(
+            "Temas em rápida mudança (2025–2026): HPAI e One Health, vacinação e RAM, "
+            "vacinas de nova geração, pecuária de precisão/IA, sexagem in ovo, "
+            "sustentabilidade, mercado e clima. Condensado do Módulo 17 da base (reconfirmar vigência)."
+        ),
+        chapters=[
+            ChapterDef(1, "Influenza Aviária de Alta Patogenicidade (HPAI) — situação atual", 1, 25,
+                       ["hpai", "h5n1", "one-health", "montenegro", "vigilancia"]),
+            ChapterDef(2, "Vacinação contra HPAI, RAM e vacinas de nova geração", 2, 25,
+                       ["vacinacao-hpai", "ram", "diva", "hvt", "promotores"]),
+            ChapterDef(3, "Tecnologia e digitalização (PLF, IA, sensores, automação)", 3, 25,
+                       ["plf", "inteligencia-artificial", "iot", "automacao", "visao-computacional"]),
+            ChapterDef(4, "Sexagem in ovo e vigilância molecular", 4, 20,
+                       ["sexagem-in-ovo", "cheggy", "sequenciamento", "pcr", "incubatorio"]),
+            ChapterDef(5, "Sustentabilidade, mercado e mudanças climáticas", 5, 25,
+                       ["sustentabilidade", "economia-circular", "estresse-termico", "bem-estar-mercado", "food-safety"]),
+            ChapterDef(6, "Revisão rápida e flashcards", 6, 20,
+                       ["revisao", "flashcards", "temas-atuais"]),
         ],
     ),
 ]
