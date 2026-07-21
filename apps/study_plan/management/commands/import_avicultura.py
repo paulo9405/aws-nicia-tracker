@@ -473,6 +473,68 @@ AVICULTURA_MAP: list[ModuleDef] = [
                        ["revisao", "flashcards", "legislacao"]),
         ],
     ),
+    ModuleDef(
+        order=AVICULTURA_ORDER_BASE + 12,  # 27
+        title="Avicultura — Bem-estar Animal",
+        slug="avicultura-bem-estar",
+        master_file="avicultura/ESTUDO_NICIA/AVICULTURA_BEMESTAR_MASTER.md",
+        subject_name="Avicultura — Bem-estar Animal",
+        subject_slug="avicultura-bem-estar",
+        subject_color="#4a9a6a",
+        study_phase="1",
+        estimated_hours=7.0,
+        icon="🐥",
+        description=(
+            "Cinco Liberdades e Cinco Domínios, indicadores animal-based, bem-estar na "
+            "granja, manejo pré-abate, incubatório/pintinho, eutanásia humanitária e "
+            "exigências de mercado. Condensado do Módulo 12 da base."
+        ),
+        chapters=[
+            ChapterDef(1, "Conceitos e indicadores", 1, 25,
+                       ["bem-estar", "cinco-liberdades", "cinco-dominios", "gait-score", "pododermatite"]),
+            ChapterDef(2, "Bem-estar na produção (granja)", 2, 25,
+                       ["ambiencia", "cama", "densidade", "locomocao", "comportamento"]),
+            ChapterDef(3, "Manejo pré-abate (captura e transporte)", 3, 25,
+                       ["pre-abate", "apanha", "jejum", "transporte", "doa"]),
+            ChapterDef(4, "Bem-estar no incubatório e do pintinho", 4, 25,
+                       ["incubatorio", "sexagem", "descarte-de-machos", "sexagem-in-ovo", "refugos"]),
+            ChapterDef(5, "Eutanásia humanitária e exigências de mercado", 5, 25,
+                       ["eutanasia", "abate-sanitario", "certificacoes", "cage-free", "mercado"]),
+            ChapterDef(6, "Revisão rápida e flashcards", 6, 20,
+                       ["revisao", "flashcards", "bem-estar"]),
+        ],
+    ),
+    ModuleDef(
+        order=AVICULTURA_ORDER_BASE + 13,  # 28
+        title="Avicultura — Inspeção e Saúde Pública",
+        slug="avicultura-inspecao",
+        master_file="avicultura/ESTUDO_NICIA/AVICULTURA_INSPECAO_MASTER.md",
+        subject_name="Avicultura — Inspeção e Saúde Pública",
+        subject_slug="avicultura-inspecao",
+        subject_color="#8a5a3a",
+        study_phase="1",
+        estimated_hours=7.0,
+        icon="🍗",
+        description=(
+            "Inspeção (RIISPOA/SIF), APPCC e autocontrole, segurança do alimento "
+            "(Salmonella/Campylobacter), resíduos e resistência antimicrobiana, "
+            "zoonoses e One Health. Condensado do Módulo 13 da base."
+        ),
+        chapters=[
+            ChapterDef(1, "Inspeção, RIISPOA e SIF", 1, 25,
+                       ["riispoa", "sif", "ante-mortem", "post-mortem", "condenacoes"]),
+            ChapterDef(2, "APPCC e programas de autocontrole", 2, 25,
+                       ["appcc", "haccp", "pcc", "bpf", "ppho"]),
+            ChapterDef(3, "Segurança do alimento (Salmonella e Campylobacter)", 3, 25,
+                       ["salmonella", "campylobacter", "farm-to-fork", "multi-hurdle", "paa"]),
+            ChapterDef(4, "Resíduos, antimicrobianos e resistência antimicrobiana", 4, 25,
+                       ["residuos", "carencia", "pncrc", "uso-responsavel", "ram"]),
+            ChapterDef(5, "Zoonoses e saúde pública (One Health)", 5, 25,
+                       ["zoonoses", "one-health", "cadeia", "risco-ocupacional"]),
+            ChapterDef(6, "Revisão rápida e flashcards", 6, 20,
+                       ["revisao", "flashcards", "inspecao", "saude-publica"]),
+        ],
+    ),
 ]
 
 
