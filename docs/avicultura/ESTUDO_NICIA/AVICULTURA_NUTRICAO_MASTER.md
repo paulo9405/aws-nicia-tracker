@@ -127,7 +127,7 @@ Foco em **sinais e lesões de deficiência** (valor para diagnóstico diferencia
 - **B1 (tiamina):** "**stargazing**" (cabeça p/ trás); histórico de **tiaminase** (peixe cru).
 - **B2 (riboflavina):** **dedos curvados ("curled-toe")** + nervos ciático/braquial alargados.
 - **B6 (piridoxina):** **convulsões espasmódicas ativas** (diferencia da encefalomalácia).
-- **Niacina (B3):** "**língua preta**". · **Biotina:** dermatite de coxins + FLKS.
+- **Niacina (B3):** "**língua preta**". · **Biotina:** dermatite de coxins + síndrome do fígado e rim gordurosos (FLKS).
 - **Ácido fólico:** embriões com **bico deformado** (morte no **fim** da incubação). · **B12:**
   mortalidade no **meio** da incubação. · **Colina:** **perose** (tendão de Aquiles deslocado).
 

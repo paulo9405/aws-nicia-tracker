@@ -128,7 +128,7 @@ Métodos **indiretos** (detectam **anticorpos**) — avaliam **resposta vacinal*
 - Mede **anticorpos** = **exposição** (vacinal **ou** de campo) e status imune. **Não detecta o
   agente** — "ter anticorpo" ≠ "estar doente agora".
 
-### 4.2 Título médio e uniformidade — coeficiente de variação (%CV)
+### 4.2 Título médio e uniformidade — coeficiente de variação (CV)
 - **Título médio** = intensidade da resposta. · **%CV** = **uniformidade** (CV baixo = uniforme; CV
   alto = desuniforme). Após vacinação/infecção, o **título sobe** e o **%CV cai**.
 

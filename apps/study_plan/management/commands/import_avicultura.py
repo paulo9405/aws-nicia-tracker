@@ -339,6 +339,37 @@ AVICULTURA_MAP: list[ModuleDef] = [
                        ["revisao", "flashcards", "diagnostico"]),
         ],
     ),
+    ModuleDef(
+        order=AVICULTURA_ORDER_BASE + 8,  # 23
+        title="Avicultura — Patologia e Necropsia",
+        slug="avicultura-patologia",
+        master_file="avicultura/ESTUDO_NICIA/AVICULTURA_PATOLOGIA_MASTER.md",
+        subject_name="Avicultura — Patologia e Necropsia",
+        subject_slug="avicultura-patologia",
+        subject_color="#9a3a5a",
+        study_phase="1",
+        estimated_hours=9.0,
+        icon="🔎",
+        description=(
+            "Técnica de necropsia sistemática, nomenclatura e artefatos pós-morte, "
+            "lesões por sistema, coleta/envio de amostras e matrizes de bancada "
+            "(órgão×lesão, sinal×lesão). Condensado do Módulo 18 da base."
+        ),
+        chapters=[
+            ChapterDef(1, "Técnica de necropsia sistemática", 1, 30,
+                       ["necropsia", "sequencia-sistematica", "sacos-aereos", "biosseguranca"]),
+            ChapterDef(2, "Nomenclatura e alterações pós-morte (artefatos)", 2, 30,
+                       ["nomenclatura", "autolise", "artefatos", "descricao-de-lesao"]),
+            ChapterDef(3, "Lesões por sistema", 3, 40,
+                       ["lesoes-por-sistema", "respiratorio", "digestorio", "linfoide"]),
+            ChapterDef(4, "Coleta e envio de amostras na necropsia", 4, 25,
+                       ["coleta", "formol", "duas-fracoes", "histopatologia"]),
+            ChapterDef(5, "Matrizes de bancada (órgão × lesão, sinal × lesão)", 5, 30,
+                       ["orgao-lesao", "sinal-lesao", "matrizes", "correlacao"]),
+            ChapterDef(6, "Revisão rápida e flashcards", 6, 20,
+                       ["revisao", "flashcards", "patologia", "necropsia"]),
+        ],
+    ),
 ]
 
 

@@ -101,11 +101,11 @@ parecidas** entre si — a separação é **laboratorial**.
   regional. Confirmação **reação em cadeia da polimerase via transcrição reversa (RT-PCR)**.
 - **Laringotraqueíte (LTI) — `V06`:** herpesvírus (GaHV-1); forma grave com **traqueíte hemorrágica**
   e **expectoração de sangue**; **incubação 6–12 dias** (natural). Histopatologia (**inclusões
-  intranucleares**) + PCR. Cuidado com **vacina viva vacina viva de origem em embrião de galinha (CEO)** revertendo virulência.
+  intranucleares**) + reação em cadeia da polimerase (PCR). Cuidado com **vacina viva de origem em embrião de galinha (CEO)** revertendo virulência.
 - **Metapneumovírus (aMPV/SHS) — `V12`:** **cabeça inchada** (swollen head) por infecção + secundárias.
 
 ### 3.2 Imunossupressoras (abrem porta para outras doenças)
-- **Gumboro (Doença Infecciosa da Bursa, Doença Infecciosa da Bursa/Gumboro (IBD)) — `V03`:** ataca a **bursa de Fabricius** → jovens; imunossupressão + hemorragias em musculatura. Vacinação dependente de anticorpos maternos.
+- **Gumboro (Doença Infecciosa da Bursa, IBD) — `V03`:** ataca a **bursa de Fabricius** → jovens; imunossupressão + hemorragias em musculatura. Vacinação dependente de anticorpos maternos.
 - **Marek — `V05`:** herpesvírus; **paralisia assimétrica** (uma perna à frente, outra atrás),
   **nervos periféricos aumentados**, tumores viscerais; **≥ 3 semanas**. Vacina **herpesvírus de peru (HVT) ao nascer/in ovo**.
 - **Anemia Infecciosa (CAV) — `V10`:** anemia, **medula óssea pálida**, atrofia de timo; imunossupressão.
