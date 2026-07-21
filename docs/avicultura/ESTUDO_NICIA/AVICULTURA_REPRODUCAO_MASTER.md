@@ -30,12 +30,12 @@ e uniformidade** do lote.
 ### 1.2 Fotoestimulação (o gatilho)
 - O aumento do **fotoperíodo** desencadeia a maturidade (luz → eixo hormonal).
 - **Não fotoestimular antes de ~20–21 semanas**; **atrasar** se o lote está **abaixo do peso** ou
-  **desuniforme (CV > 10%)**.
+  **desuniforme (coeficiente de variação (CV) > 10%)**.
 - Matrizes são criadas em **galpão à prova de luz (dark-out)** para não sofrerem o fotoperíodo
   natural e garantir **uniformidade sexual**. **Machos e fêmeas no mesmo programa de luz** (sincronia).
 
 ### 1.3 Eixo hormonal e formação do ovo
-- Eixo **hipotálamo–hipófise–gônadas:** luz → **GnRH** → **LH/FSH** → esteroides → **ovulação**.
+- Eixo **hipotálamo–hipófise–gônadas:** luz → **hormônio liberador de gonadotrofinas (GnRH)** → **LH/FSH** → esteroides → **ovulação**.
 - Cada ovo leva **~24–26 h** para se formar; a sequência de posturas ("clutch") desloca o horário.
 
 ### 1.4 Macho e persistência da fertilidade
@@ -106,7 +106,7 @@ Os machos são **metade da fertilidade** do lote — muitas quedas de fertilidad
 
 ### 4.2 Fecundação e armazenamento de sêmen
 - A fecundação ocorre no **infundíbulo**, antes da deposição de clara e casca.
-- Espermatozoides ficam nos **SSTs** (junção útero-vaginal) e são liberados **gradualmente**;
+- Espermatozoides ficam nos **túbulos de armazenamento de espermatozoides (SSTs)** (junção útero-vaginal) e são liberados **gradualmente**;
   fertilidade dura **~2–3 semanas** após a última cópula/IA (menor com a idade).
 
 ### 4.3 Curva de fertilidade por idade (referência de literatura)
@@ -200,7 +200,7 @@ Arquivo-espelho das "falhas de incubação": juntos cobrem **matriz → ovo → 
 
 ### 7.3 Correções típicas
 - Fertilidade: **spiking/intra-spiking**, ajuste de relação macho:fêmea e condição, sanidade.
-- Postura: uniformidade/fotoestimulação, nutrição, controle de doenças (BI, EDS, Newcastle, micoplasmose).
+- Postura: uniformidade/fotoestimulação, nutrição, controle de doenças (Bronquite Infecciosa (BI), Síndrome da Queda de Postura (EDS), Newcastle, micoplasmose).
 - Eclodibilidade: corrigir incubação, nutrição da matriz, armazenamento, transmissão vertical.
 
 ---
@@ -224,7 +224,7 @@ ovo forma em **~24–26 h**; armazenamento **~18 °C (≤1 sem) / ~13 °C (>1 se
 ### Flashcards (P→R)
 1. **Diferença entre fertilidade e eclodibilidade?** → Fertilidade = ovo fecundado; eclodibilidade = ovo que eclode.
 2. **Quando fotoestimular matrizes?** → ~20–21 semanas (atrasar se abaixo do peso ou CV > 10%).
-3. **Onde a galinha armazena espermatozoides e por quanto tempo?** → SSTs na junção útero-vaginal; ~2–3 semanas.
+3. **Onde a galinha armazena espermatozoides e por quanto tempo?** → túbulos de armazenamento de espermatozoides (SSTs) na junção útero-vaginal; ~2–3 semanas.
 4. **Curva de fertilidade: início, pico e declínio?** → ~65–75% início; ~95% no pico (35–37 sem); declínio 45–54 sem.
 5. **O que é spiking?** → Introduzir machos jovens em lote velho para recuperar a fertilidade.
 6. **Meta de uniformidade (CV) das matrizes?** → CV < 10%.

@@ -42,7 +42,7 @@ para garantir a ingestão correta de proteína, aminoácidos, vitaminas e minera
 
 ### 1.4 Fontes de exigências
 - **Tabelas Brasileiras (Rostagno, 2024, 5ª ed.)** — referência **nacional** de formulação.
-- **NRC** — referência internacional clássica. · **Manuais das linhagens** — específicos (⚠️ não universais).
+- **National Research Council (NRC)** — referência internacional clássica. · **Manuais das linhagens** — específicos (⚠️ não universais).
 
 ---
 
@@ -71,7 +71,7 @@ para garantir a ingestão correta de proteína, aminoácidos, vitaminas e minera
 ## 3. Energia e lipídios
 
 ### 3.1 Sistemas de energia
-- **EM Aparente (AMEn/EMA):** o **mais usado** na formulação de aves. · EM verdadeira (TMEn) corrige
+- **energia metabolizável (EM) Aparente (AMEn/EMA):** o **mais usado** na formulação de aves. · EM verdadeira (TMEn) corrige
   perdas endógenas. Energia em **kcal/kg**.
 - Referência: frangos de corte ~**3.200 kcal AMEn/kg** (⚠️ varia por fase/linhagem — Rostagno/manual).
 
@@ -148,7 +148,7 @@ Foco em **sinais e lesões de deficiência** (valor para diagnóstico diferencia
 ## 6. Formulação de rações e alimentação por categoria
 
 ### 6.1 Formulação de custo mínimo
-- Atender exigências (**EM + aminoácidos digestíveis + minerais + vitaminas**) **ao menor custo**,
+- Atender exigências (**energia metabolizável (EM) + aminoácidos digestíveis + minerais + vitaminas**) **ao menor custo**,
   a partir da composição dos alimentos (Rostagno) e exigências.
 - Ferramentas: **fitase/carboidrases**, **aminoácidos sintéticos**, balanço eletrolítico.
 - **Forma física:** farelada, **peletizada** (melhora consumo/conversão, mas calor degrada
@@ -181,7 +181,7 @@ Foco em **sinais e lesões de deficiência** (valor para diagnóstico diferencia
 | **Ocratoxina A** | *Aspergillus/Penicillium* | **Rim** (nefrotóxica); adsorventes pouco eficazes |
 | **Fumonisinas** | *Fusarium verticillioides* | Bloqueia esfingolipídios; imunossupressão (≥ ~75 ppm) |
 | **T-2 (tricoteceno)** | *Fusarium* | **Lesões orais**, recusa alimentar; aves muito sensíveis (~1 ppm) |
-| **DON / Zearalenona** | *Fusarium* | Pouco tóxicas p/ aves em níveis naturais (ZEA = risco de resíduo humano) |
+| **desoxinivalenol (DON) / Zearalenona** | *Fusarium* | Pouco tóxicas p/ aves em níveis naturais (zearalenona (ZEA) = risco de resíduo humano) |
 
 > 💡 **Imunossupressão** (aflatoxina, ocratoxina, T-2, fumonisina) → mais infecções e **falha vacinal**;
 > perdas **subclínicas** antes de sinais evidentes.
@@ -198,7 +198,7 @@ Foco em **sinais e lesões de deficiência** (valor para diagnóstico diferencia
 
 ### 7.4 Limite regulatório no Brasil (confirmado)
 - **Ração/matéria-prima (MAPA):** **Portaria MA/SNAD/SFA nº 07/1988** — **aflatoxinas (B1+B2+G1+G2) ≤
-  50 ppb**. Alimentos humanos: **ANVISA RDC 722/2022 + IN 160/2022** (ver módulo de Legislação). ⚠️
+  50 ppb**. Alimentos humanos: **Agência Nacional de Vigilância Sanitária (ANVISA) RDC 722/2022 + IN 160/2022** (ver módulo de Legislação). ⚠️
   Reconfirmar vigência antes de uso prático.
 
 ---
@@ -220,7 +220,7 @@ conduta (ex.: tratar com antibiótico um problema de ração).
 
 ### 8.3 Lesão / síndrome
 - **Queda de postura + casca fina** (D3/Ca/P/Mn) → vs. **BI/EDS/Newcastle** (sorologia/histórico).
-- **Palidez/anemia** (ferro/B12/ác.fólico, aflatoxina) → vs. **CAV**/leucose.
+- **Palidez/anemia** (ferro/B12/ác.fólico, aflatoxina) → vs. **Anemia Infecciosa das Galinhas (CAV)**/leucose.
 - **Imunossupressão/falha vacinal** (micotoxinas) → vs. **Gumboro/Marek/CAV** (lesão de bursa/timo).
 
 ### 8.4 Mortalidade embrionária (deficiência da matriz)

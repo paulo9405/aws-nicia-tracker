@@ -45,7 +45,7 @@ patogênicos**. É a medida preventiva **mais custo-efetiva** da avicultura (mai
 
 ### 1.4 Compartimentação
 Conjunto de estabelecimentos sob **gestão de biossegurança comum** e status sanitário definido,
-reconhecido pela **WOAH** para fins de comércio (exportação).
+reconhecido pela **Organização Mundial de Saúde Animal (WOAH)** para fins de comércio (exportação).
 
 > 💡 **Rigor proporcional ao valor:** corte < matrizes < **avós/bisavós + incubatórios** (cap. 6).
 
@@ -60,7 +60,7 @@ e uma **linha/barreira sanitária** entre o "fora" (sujo) e o "dentro" (limpo).
 ### 2.2 Barreira sanitária
 - **Barreira dinamarquesa (banho):** deixar roupas/calçados externos no lado sujo → **banho** → vestir
   roupas/botas limpas exclusivas da granja no lado limpo.
-- Onde não há banho: no mínimo **troca de roupa/calçado** + higiene de mãos + EPI.
+- Onde não há banho: no mínimo **troca de roupa/calçado** + higiene de mãos + equipamento de proteção individual (EPI).
 
 ### 2.3 Pessoas, veículos e materiais
 - **Acesso restrito** ao essencial; **registro de entrada** (rastreabilidade); **downtime de pessoas**
@@ -120,7 +120,7 @@ abrigo** das pragas) + físico (telas) + biológico + químico dirigido.
 | **Cascudinho** (*Alphitobius*) | Coccídio, Salmonella, *E. coli*, Marek, Gumboro | Manejo de **cama** (umidade), tratamento no **vazio sanitário** |
 | **Moscas** | Salmonella, *E. coli*, Campylobacter | Manejo de cama/esterco (umidade), larvicidas |
 | **Mosquitos** | **Bouba (fowlpox)** | Eliminar água parada, telas, larvicidas |
-| **Aves silvestres** | **Reservatório de IA e Newcastle** | **Telamento** de galpões/silos, sem acesso a ração/água |
+| **Aves silvestres** | **Reservatório de Influenza Aviária (IA) e Newcastle** | **Telamento** de galpões/silos, sem acesso a ração/água |
 | **Cães/gatos/suínos, sinantrópicos** | Vetores mecânicos/biológicos | Não circular nas áreas de produção |
 
 > 💡 Denominador comum: **retirar alimento, água e abrigo** + barreiras físicas.
@@ -157,7 +157,7 @@ Corte < Matrizes < Avós/Bisavós/Linhas puras   +   Incubatórios (elo que cone
 
 - **Corte:** all-in/all-out, vazio, acesso/veículos, pragas, água/ração, cama.
 - **Matrizes:** rigor maior (protegem a progênie — transmissão vertical); **monitoramento oficial
-  PNSA** (Salmonella Pullorum/Gallinarum e Micoplasmas — teste e certificação).
+  Programa Nacional de Sanidade Avícola (PNSA)** (Salmonella Pullorum/Gallinarum e Micoplasmas — teste e certificação).
 - **Avós/bisavós/linhas puras:** **rigor máximo** (compartimentação, quarentenas longas, downtime
   prolongado, monitoramento intensivo incl. **Leucose**); frequentemente importados.
 - **Incubatórios:** concentram ovos de vários lotes → uma falha **dissemina amplamente**. Fluxo
@@ -175,7 +175,7 @@ Corte < Matrizes < Avós/Bisavós/Linhas puras   +   Incubatórios (elo que cone
 Fecha o ciclo: **planejar → executar (POPs) → verificar → agir** (melhoria contínua).
 
 ### 7.1 Monitoramento ambiental (verificar a eficácia)
-- **Swabs de arrasto (boot/drag), swabs de superfície, placas RODAC**, análises microbiológicas.
+- **Swabs de arrasto (boot/drag), swabs de superfície, placas placa de contato de superfície (RODAC)**, análises microbiológicas.
 - **Alvos:** **Salmonella** (cama/poeira/ambiente), contagem total, **fungos** (incubatório), coliformes.
 - **Momento:** após a secagem (~**2–3 dias** pós-desinfecção). Água: microbiologia + cloro.
 
@@ -187,7 +187,7 @@ Fecha o ciclo: **planejar → executar (POPs) → verificar → agir** (melhoria
 
 ### 7.3 Plano de contingência (emergência)
 Diante de suspeita de doença notificável (**IA/Newcastle**): **isolar + não movimentar** → **comunicar
-imediatamente o SVO** → reforçar biossegurança/EPI → seguir **medidas oficiais** (interdição, abate
+imediatamente o Serviço Veterinário Oficial (SVO)** → reforçar biossegurança/EPI → seguir **medidas oficiais** (interdição, abate
 sanitário, vazio, vigilância). Prever também **falha de energia/equipamento** no incubatório.
 
 ---
@@ -213,7 +213,7 @@ vigilância · biocontenção**.
 5. **Por que o pedilúvio pode não funcionar?** → Se estiver sujo/seco (matéria orgânica) ou com desinfetante errado/vencido.
 6. **Qual praga é o principal vetor da cama de aviário?** → Cascudinho (*Alphitobius diaperinus*).
 7. **Reservatório de Influenza Aviária e Newcastle entre a fauna?** → Aves silvestres (aquáticas migratórias) → telamento.
-8. **O que é compartimentação?** → Estabelecimentos sob gestão de biossegurança comum e status sanitário definido, reconhecidos pela WOAH para comércio.
+8. **O que é compartimentação?** → Estabelecimentos sob gestão de biossegurança comum e status sanitário definido, reconhecidos pela Organização Mundial de Saúde Animal (WOAH) para comércio.
 9. **Onde o rigor de biossegurança é máximo?** → Núcleos de avós/bisavós e incubatórios.
 10. **Agentes resistentes a desinfecção comum?** → Gumboro/CAV (não envelopados), oocistos de coccídio, esporos de *Aspergillus*.
 11. **Conduta diante de suspeita de IA/Newcastle?** → Isolar, não movimentar, comunicar imediatamente o serviço veterinário oficial.

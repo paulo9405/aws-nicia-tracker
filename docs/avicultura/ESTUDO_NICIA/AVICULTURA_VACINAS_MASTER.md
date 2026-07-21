@@ -26,13 +26,13 @@
 |---|---|---|---|---|---|
 | **Viva atenuada** | Spray/água/ocular | **Sim** | Possível | Curta-média | Corte; primovacinação |
 | **Inativada (oleosa)** | SC/IM | Menor | Não | **Longa** | Matrizes/poedeiras; reforço |
-| **Vetorizada (HVT)** | In ovo/SC | **Não** (contorna) | Não | Longa (início lento) | Marek, Gumboro, Newcastle, LTI |
+| **Vetorizada (HVT)** | In ovo/SC | **Não** (contorna) | Não | Longa (início lento) | Marek, Gumboro, Newcastle, Laringotraqueíte Infecciosa (LTI) |
 | **Autógena** | Conforme | — | Não | Variável | Agentes sem vacina comercial |
 
 ### 1.1 Viva atenuada
 Microrganismo **vivo atenuado** que se replica → imunidade **humoral e de mucosa**, rápida e em
 **massa** (spray/água). **Limitações:** frágil (cadeia de frio; **cloro inativa**), **reação vacinal**,
-risco de **reversão de virulência** (ex.: LTI CEO) e **interferência do anticorpo materno**.
+risco de **reversão de virulência** (ex.: LTI vacina viva de origem em embrião de galinha (CEO)) e **interferência do anticorpo materno**.
 
 ### 1.2 Inativada (morta/oleosa)
 Agente inativado + **adjuvante oleoso**; **parenteral individual** (SC/IM). Imunidade **duradoura e
@@ -41,12 +41,12 @@ individual, início lento, exige **priming** (viva prévia).
 
 ### 1.3 Vetorizada (recombinante)
 Vetor viral (**HVT** ou poxvírus) carrega antígeno de outra doença (ex.: **HVT-Gumboro/VP2, HVT-
-Newcastle, HVT-LTI**). **Contorna o anticorpo materno**, não reverte, permite **DIVA**. **Limitações:**
+Newcastle, HVT-LTI**). **Contorna o anticorpo materno**, não reverte, permite **diferenciar infectado de vacinado (DIVA)**. **Limitações:**
 proteção mais **lenta (3–4 sem)**, ~um antígeno por vetor (competição entre HVT), custo maior.
 
 ### 1.4 Autógena (autovacina)
-Feita de **cepas do próprio plantel/região** para agentes **sem vacina comercial** (ex.: APEC,
-*Gallibacterium*, ORT). Uso condicionado a **autorização oficial** e diagnóstico; protege só a(s)
+Feita de **cepas do próprio plantel/região** para agentes **sem vacina comercial** (ex.: Escherichia coli patogênica para aves (APEC),
+*Gallibacterium*, Ornithobacterium rhinotracheale (ORT)). Uso condicionado a **autorização oficial** e diagnóstico; protege só a(s)
 cepa(s) do isolado.
 
 > 💡 **Nenhum tipo é universal** — a escolha depende de agente, categoria, anticorpo materno, desafio,
@@ -60,11 +60,11 @@ cepa(s) do isolado.
 |---|---|---|
 | **Spray (aerossol)** | Vivas respiratórias (Newcastle/BI), coccidiose | **Tamanho de gota** (grossa p/ pintinho); uniformidade |
 | **Água de bebida** | Vivas em massa (~14–21 d + reforços) | **Neutralizar cloro** (leite desnatado); beber em ~1–2 h |
-| **Ocular/nasal** | Boa **imunidade local** (LTI, Newcastle/BI) | Individual; absorver a gota antes de soltar |
+| **Ocular/nasal** | Boa **imunidade local** (Laringotraqueíte Infecciosa (LTI), Newcastle/BI) | Individual; absorver a gota antes de soltar |
 | **Subcutânea (nuca)** | Inativadas; **Marek ao nascer** (~0,2 mL) | Assepsia (evitar abscesso/onfalite) |
 | **Intramuscular** | Inativadas (matriz/poedeira) | Peito ou perna; reação de adjuvante |
 | **In ovo** | Marek + vetorizadas | **Transferência (17–19 d)**; assoalho da câmara de ar |
-| **Punção da asa (wing-web)** | **Encefalomielite, Bouba, CAV** | Avaliar a **"pega" (take)** dias depois |
+| **Punção da asa (wing-web)** | **Encefalomielite, Bouba, Anemia Infecciosa das Galinhas (CAV)** | Avaliar a **"pega" (take)** dias depois |
 
 ### 2.1 Controle de qualidade da aplicação
 - Spray/água: **corante/marcador**, observar consumo. · Wing-web/Marek: avaliar a **reação vacinal
@@ -81,9 +81,9 @@ produção de anticorpos próprios.
 
 ### 3.2 Estratégias para contornar
 1. **Timing:** aplicar a viva **quando o MDA declina** (perfil sorológico do lote).
-2. **Vetorizadas (HVT):** **contornam o MDA** — ideais **in ovo/ao nascer** (Gumboro, Newcastle, LTI).
+2. **Vetorizadas (HVT):** **contornam o MDA** — ideais **in ovo/ao nascer** (Gumboro, Newcastle, Laringotraqueíte Infecciosa (LTI)).
 3. **Vacinar as matrizes (inativada):** gera **MDA alto e uniforme** na progênie (Gumboro, Newcastle,
-   reovírus, CAV, EA, EDS).
+   reovírus, Anemia Infecciosa das Galinhas (CAV), Encefalomielite Aviária (EA), Síndrome da Queda de Postura (EDS)).
 4. **Monitoramento sorológico** para definir o **dia ideal** (ex.: fórmulas de previsão do dia de
    Gumboro — princípio, não protocolo único).
 
@@ -95,17 +95,17 @@ produção de anticorpos próprios.
 ## 4. Princípios de programas vacinais
 
 ### 4.1 Fatores que definem o programa [Merck]
-Desafio **epidemiológico** da região; **legislação/produtos registrados** (ex.: IA restrita);
+Desafio **epidemiológico** da região; **legislação/produtos registrados** (ex.: Influenza Aviária (IA) restrita);
 **categoria/finalidade**; **idade e anticorpos maternos**; **histórico sanitário**; **status
 imunológico** e monitoramento; **orientação do veterinário responsável**.
 
 ### 4.2 Lógica por categoria (princípios — não prescrição)
 | Categoria | Lógica |
 |---|---|
-| **Frango de corte** | **Simplificado** (vida curta): Marek (in ovo/nascer) + Gumboro + Newcastle/BI (vivas); depende muito do MDA das matrizes |
+| **Frango de corte** | **Simplificado** (vida curta): Marek (in ovo/nascer) + Gumboro + Newcastle/BI (vivas); depende muito do anticorpos maternos (MDA) das matrizes |
 | **Matrizes de corte** | **Intensivo** (vida longa + proteger progênie): vivas na recria + **reforços inativados**; objetivo duplo: proteger a matriz **e transferir MDA** |
 | **Poedeiras** | Semelhante; **revacinações periódicas** (ex.: ~60–90 dias) ao longo do ciclo; Salmonella/MG quando indicado |
-| **Núcleos (avós)** | Rigor máximo; frequentemente **erradicação** (Leucose, Salmonella, MG) mais que vacinação |
+| **Núcleos (avós)** | Rigor máximo; frequentemente **erradicação** (Leucose, Salmonella, Mycoplasma gallisepticum (MG)) mais que vacinação |
 
 ### 4.3 Como se constrói (passos)
 Diagnóstico epidemiológico → definir alvos + produtos registrados → escolher **tipo e via** por alvo
@@ -147,7 +147,7 @@ antigênica** (sequenciamento).
 - **Inativada** → **imunidade materna** (matrizes) + duradoura, mas individual e início lento
 - **Cloro na água** → **inativa vacina viva** → neutralizar com **leite desnatado**
 - **Marek** → in ovo (17–19 d) ou **SC na nuca ao nascer (~0,2 mL)**
-- **Wing-web** → **Encefalomielite, Bouba, CAV**
+- **Wing-web** → **Encefalomielite, Bouba, Anemia Infecciosa das Galinhas (CAV)**
 - **Falha vacinal** → cadeia de frio, uniformidade, MDA, cepa × variante
 
 ### Flashcards (P→R)

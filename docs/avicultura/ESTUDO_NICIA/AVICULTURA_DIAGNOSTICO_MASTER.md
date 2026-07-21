@@ -40,7 +40,7 @@ considerar **idade/categoria** (ex.: Marek ≥ 3 sem × Leucose > 14 sem) e **ep
 incluir causas **não infecciosas** (nutrição, manejo, metabólicas).
 
 > ⚠️ Suspeita de **Influenza Aviária ou Newcastle**: **notificar imediatamente**, biossegurança
-> máxima, coleta com EPI — **não** é investigação de rotina.
+> máxima, coleta com equipamento de proteção individual (EPI) — **não** é investigação de rotina.
 
 ---
 
@@ -53,7 +53,7 @@ incluir causas **não infecciosas** (nutrição, manejo, metabólicas).
   aves terminais/autolisadas dão resultado ruim. Amostrar afetadas (e sadias, p/ comparação/sorologia).
 
 ### 2.2 Número (referência prática)
-- **3–5 aves por lote/galpão** para necropsia/detecção. · **PCR:** até **~5 swabs/tecidos em pool**.
+- **3–5 aves por lote/galpão** para necropsia/detecção. · **reação em cadeia da polimerase (PCR):** até **~5 swabs/tecidos em pool**.
 - **Sorologia:** amostragem maior e aleatória. ⚠️ Números estatísticos exatos dependem de **objetivo/
   prevalência/norma** — não inventar.
 
@@ -85,7 +85,7 @@ incluir causas **não infecciosas** (nutrição, manejo, metabólicas).
 | Obter/patotipar o agente | **Isolamento** + sequenciamento |
 | Orientar antibiótico | **Cultura + antibiograma** |
 | Ligar **lesão ao agente** | **Histopatologia/IHQ** |
-| Tipar variante (ex.: BI) | **Sequenciamento** (gene S) |
+| Tipar variante (ex.: Bronquite Infecciosa (BI)) | **Sequenciamento** (gene S) |
 
 ### 3.1 PCR / RT-PCR
 Amplifica **DNA (PCR)** ou **RNA (RT-PCR)** — **específico, rápido, preferencial**. **Limitação-chave:**
@@ -93,7 +93,7 @@ detecta **ácido nucleico** (não distingue vivo/morto nem vacinal/campo) → **
 Marek vacinal). Risco de falso + (contaminação) e falso – (inibidores).
 
 ### 3.2 Isolamento
-- **Viral:** ovos embrionados SPF ou cultura celular (padrão p/ obter o vírus / patotipar); **lento**.
+- **Viral:** ovos embrionados livre de patógenos específicos (SPF) ou cultura celular (padrão p/ obter o vírus / patotipar); **lento**.
 - **Bacteriano (cultura):** padrão p/ bactérias; exige **sítio estéril/assepsia**. Agentes
   **fastidiosos** (Micoplasma, *Avibacterium*) crescem mal → **PCR complementa**.
 
@@ -101,13 +101,13 @@ Marek vacinal). Risco de falso + (contaminação) e falso – (inibidores).
 Testa a **sensibilidade** do isolado bacteriano → terapia **racional** e monitoramento de **resistência**.
 In vitro ≠ in vivo.
 
-### 3.4 Histopatologia e IHQ
-- **Histopatologia** (tecido em formol): revela **lesões características** (inclusões de LTI, depleção
-  bursal de Gumboro, aplasia medular de CAV). **IHQ** localiza o **antígeno** (diferencia tumores
+### 3.4 Histopatologia e imuno-histoquímica (IHQ)
+- **Histopatologia** (tecido em formol): revela **lesões características** (inclusões de Laringotraqueíte Infecciosa (LTI), depleção
+  bursal de Gumboro, aplasia medular de Anemia Infecciosa das Galinhas (CAV)). **IHQ** localiza o **antígeno** (diferencia tumores
   Marek × Leucose × Reticuloendoteliose).
 
 ### 3.5 Sequenciamento
-Tipa **variante/patótipo** (gene S da BI, patótipo de Newcastle, clado de HPAI) → **vigilância
+Tipa **variante/patótipo** (gene S da BI, patótipo de Newcastle, clado de Influenza Aviária de Alta Patogenicidade (HPAI)) → **vigilância
 molecular**, escolha de vacina, cepa vacinal × campo.
 
 ---
@@ -118,17 +118,17 @@ Métodos **indiretos** (detectam **anticorpos**) — avaliam **resposta vacinal*
 
 | Teste | Uso típico |
 |---|---|
-| **ELISA** | **Rotina** de monitoramento de lote |
-| **HI (inibição da hemaglutinação)** | Newcastle, Influenza, EDS, aMPV (vírus que hemaglutinam) |
+| **ensaio imunoenzimático (ELISA)** | **Rotina** de monitoramento de lote |
+| **inibição da hemaglutinação (HI)** | Newcastle, Influenza, Síndrome da Queda de Postura (EDS), metapneumovírus aviário (aMPV) — vírus que hemaglutinam |
 | **Soroaglutinação rápida** | Triagem de **Salmonella (Pullorum)** e **Micoplasma** (PNSA) |
-| **AGID** | Leucose, encefalomielite | 
-| **SVN (soroneutralização)** | Referência para alguns vírus |
+| **imunodifusão em ágar-gel (AGID)** | Leucose, encefalomielite | 
+| **soroneutralização (SVN)** | Referência para alguns vírus |
 
 ### 4.1 O que a sorologia mede (e não mede)
 - Mede **anticorpos** = **exposição** (vacinal **ou** de campo) e status imune. **Não detecta o
   agente** — "ter anticorpo" ≠ "estar doente agora".
 
-### 4.2 Título médio e uniformidade (%CV)
+### 4.2 Título médio e uniformidade — coeficiente de variação (%CV)
 - **Título médio** = intensidade da resposta. · **%CV** = **uniformidade** (CV baixo = uniforme; CV
   alto = desuniforme). Após vacinação/infecção, o **título sobe** e o **%CV cai**.
 
@@ -149,7 +149,7 @@ Métodos **indiretos** (detectam **anticorpos**) — avaliam **resposta vacinal*
 ### 5.1 Armadilhas comuns
 | Resultado | Risco | Como evitar |
 |---|---|---|
-| **PCR+** | "é doença ativa" | Pode ser **vacinal/morto/portador** → correlacionar com **lesão** |
+| **reação em cadeia da polimerase (PCR)+** | "é doença ativa" | Pode ser **vacinal/morto/portador** → correlacionar com **lesão** |
 | **Sorologia+** | "é infecção" | Pode ser **anticorpo vacinal** → título/CV, pareada, histórico |
 | **Cultura+ (sítio não estéril)** | "é o patógeno" | Pode ser **contaminante** → valorizar sítio estéril + quadro |
 | **Negativo** | "descarta" | Pode ser **falso –** (coleta precoce, autólise, inibidores) → repetir/associar |
@@ -167,11 +167,11 @@ adequados? **A conduta muda?**
 ## 6. Revisão rápida e flashcards
 
 **Pares "marca registrada":**
-- **PCR+** → ácido nucleico (não = doença ativa; pode ser vacinal) → correlacionar com **lesão**
-- **Sorologia** → anticorpo (exposição vacinal **ou** campo) → usar **título + %CV + pareada**
+- **reação em cadeia da polimerase (PCR)+** → ácido nucleico (não = doença ativa; pode ser vacinal) → correlacionar com **lesão**
+- **Sorologia** → anticorpo (exposição vacinal **ou** campo) → usar **título + %coeficiente de variação (CV) + pareada**
 - **Histopatologia** = **formol** (nunca congelar) · **PCR/cultura** = **refrigerar**
 - **Antibiograma** = após **cultura** → terapia racional
-- **Sequenciamento** → variante/cepa (gene S da BI, clado de HPAI)
+- **Sequenciamento** → variante/cepa (gene S da Bronquite Infecciosa (BI), clado de Influenza Aviária de Alta Patogenicidade (HPAI))
 - **Baseline sorológico** = específico da granja (não universal)
 
 ### Flashcards (P→R)

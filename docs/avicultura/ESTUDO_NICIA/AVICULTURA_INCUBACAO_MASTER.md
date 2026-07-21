@@ -121,7 +121,7 @@ Nos estágios finais o **embrião produz calor** — o controle passa a **retira
   pintinhos pequenos. · **Subaquecimento:** atraso, pintinhos "barrigudos" (vitelo grande).
 
 ### 4.2 Umidade e perda de peso do ovo
-- **UR de referência:** setter **~55%**; hatcher **~65–75%** (mais alta p/ eclosão).
+- **umidade relativa (UR) de referência:** setter **~55%**; hatcher **~65–75%** (mais alta p/ eclosão).
 - A umidade controla a **perda de água do ovo** pelos poros → forma a **câmara de ar**.
 - **Meta de perda de peso** (carga → transferência): **~11–13%** ⚠️ (referência de setor — confirmar).
   - **Perda insuficiente** (umidade alta): câmara pequena, pintinhos **edemaciados**, má bicagem.
@@ -262,7 +262,7 @@ e localizar a **fase**. Categorias: claro/infértil · mortalidade precoce (1–
 ## 9. Revisão rápida e flashcards
 
 **Números-âncora (referência — confirmar no manual):** incubação **21 dias**; setter **37,6–37,9 °C**
-/ UR **55%**; hatcher **36,1–36,7 °C** / UR **65–75%**; perda de peso do ovo **11–13%**; transferência
+/ umidade relativa (UR) **55%**; hatcher **36,1–36,7 °C** / UR **65–75%**; perda de peso do ovo **11–13%**; transferência
 **dia 18–19**; viragem até o **dia 18**, ~**±45°**, ~**1×/hora**.
 
 **Pares "marca registrada":**
