@@ -277,6 +277,37 @@ AVICULTURA_MAP: list[ModuleDef] = [
                        ["revisao", "flashcards", "manejo"]),
         ],
     ),
+    ModuleDef(
+        order=AVICULTURA_ORDER_BASE + 6,  # 21
+        title="Avicultura — Programas Vacinais",
+        slug="avicultura-vacinas",
+        master_file="avicultura/ESTUDO_NICIA/AVICULTURA_VACINAS_MASTER.md",
+        subject_name="Avicultura — Programas Vacinais",
+        subject_slug="avicultura-vacinas",
+        subject_color="#7a5aa8",
+        study_phase="1",
+        estimated_hours=8.0,
+        icon="💉",
+        description=(
+            "Tipos de vacina (viva, inativada, vetorizada, autógena), vias de "
+            "aplicação, interferência do anticorpo materno e timing, princípios de "
+            "programas e falhas vacinais. Condensado do Módulo 10 da base."
+        ),
+        chapters=[
+            ChapterDef(1, "Tipos de vacina", 1, 30,
+                       ["tipos-vacina", "viva-atenuada", "inativada", "vetorizada-hvt", "autogena"]),
+            ChapterDef(2, "Vias de aplicação", 2, 30,
+                       ["vias-aplicacao", "spray", "agua", "in-ovo", "subcutanea", "wing-web"]),
+            ChapterDef(3, "Interferência de anticorpos maternos e timing", 3, 25,
+                       ["anticorpo-materno", "mda", "timing", "janela-suscetibilidade", "sorologia"]),
+            ChapterDef(4, "Princípios de programas vacinais", 4, 25,
+                       ["programas-vacinais", "por-categoria", "sem-protocolo-universal", "biosseguranca"]),
+            ChapterDef(5, "Erros e falhas de vacinação", 5, 25,
+                       ["falha-vacinal", "cadeia-de-frio", "uniformidade", "cepa-vs-variante"]),
+            ChapterDef(6, "Revisão rápida e flashcards", 6, 20,
+                       ["revisao", "flashcards", "vacinas"]),
+        ],
+    ),
 ]
 
 
