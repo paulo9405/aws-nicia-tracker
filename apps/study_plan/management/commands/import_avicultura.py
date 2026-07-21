@@ -242,6 +242,41 @@ AVICULTURA_MAP: list[ModuleDef] = [
                        ["revisao", "flashcards", "biosseguranca"]),
         ],
     ),
+    ModuleDef(
+        order=AVICULTURA_ORDER_BASE + 5,  # 20
+        title="Avicultura — Manejo",
+        slug="avicultura-manejo",
+        master_file="avicultura/ESTUDO_NICIA/AVICULTURA_MANEJO_MASTER.md",
+        subject_name="Avicultura — Manejo",
+        subject_slug="avicultura-manejo",
+        subject_color="#6a8ab5",
+        study_phase="1",
+        estimated_hours=10.0,
+        icon="🌡️",
+        description=(
+            "O dia a dia da granja: brooding do pintinho, ambiência (temperatura/"
+            "ventilação/ar), cama, água, luz, densidade e falhas de manejo. "
+            "Condensado do Módulo 5 da base documental de avicultura."
+        ),
+        chapters=[
+            ChapterDef(1, "Manejo inicial e do pintinho de um dia (brooding)", 1, 30,
+                       ["brooding", "pintinho", "crop-fill", "pre-aquecimento", "arranque"]),
+            ChapterDef(2, "Ambiência (temperatura, umidade, ventilação, qualidade do ar)", 2, 35,
+                       ["ambiencia", "temperatura", "ventilacao", "amonia", "pressao-negativa"]),
+            ChapterDef(3, "Cama", 3, 25,
+                       ["cama", "umidade", "amonia", "cascudinho", "reutilizacao"]),
+            ChapterDef(4, "Água (manejo)", 4, 20,
+                       ["agua", "bebedouros", "cloro", "biofilme", "vacina-na-agua"]),
+            ChapterDef(5, "Luz (programas de iluminação)", 5, 25,
+                       ["luz", "fotoperiodo", "intensidade", "dark-out", "escuro"]),
+            ChapterDef(6, "Densidade de alojamento", 6, 20,
+                       ["densidade", "kg-por-m2", "lotacao", "bem-estar", "uniformidade"]),
+            ChapterDef(7, "Falhas de manejo e causa-raiz", 7, 25,
+                       ["falhas-manejo", "manejo-vs-doenca", "causa-raiz"]),
+            ChapterDef(8, "Revisão rápida e flashcards", 8, 20,
+                       ["revisao", "flashcards", "manejo"]),
+        ],
+    ),
 ]
 
 
