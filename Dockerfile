@@ -39,6 +39,7 @@ CMD ["sh", "-c", "\
   python manage.py import_study_plan && \
   python manage.py populate_chapter_content && \
   python manage.py import_avicultura && \
+  python manage.py import_avicultura_questions && \
   python manage.py import_questions docs/15_BANCO_MESTRE_DE_QUESTOES.md && \
   python manage.py create_admin && \
   gunicorn config.wsgi:application \
