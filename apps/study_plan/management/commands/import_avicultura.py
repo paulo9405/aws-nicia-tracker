@@ -370,6 +370,37 @@ AVICULTURA_MAP: list[ModuleDef] = [
                        ["revisao", "flashcards", "patologia", "necropsia"]),
         ],
     ),
+    ModuleDef(
+        order=AVICULTURA_ORDER_BASE + 9,  # 24
+        title="Avicultura — Epidemiologia e Medicina Preventiva",
+        slug="avicultura-epidemiologia",
+        master_file="avicultura/ESTUDO_NICIA/AVICULTURA_EPIDEMIOLOGIA_MASTER.md",
+        subject_name="Avicultura — Epidemiologia",
+        subject_slug="avicultura-epidemiologia",
+        subject_color="#3a6a8a",
+        study_phase="1",
+        estimated_hours=8.0,
+        icon="📈",
+        description=(
+            "Medidas epidemiológicas, cadeia de transmissão, investigação de surtos, "
+            "vigilância/programas e medicina preventiva (One Health). Condensado do "
+            "Módulo 19 da base documental de avicultura."
+        ),
+        chapters=[
+            ChapterDef(1, "Conceitos e medidas", 1, 30,
+                       ["epidemiologia", "incidencia", "prevalencia", "letalidade", "risco"]),
+            ChapterDef(2, "Cadeia epidemiológica", 2, 25,
+                       ["cadeia-epidemiologica", "triade", "reservatorio", "portador", "transmissao"]),
+            ChapterDef(3, "Investigação de surtos", 3, 30,
+                       ["surto", "definicao-de-caso", "curva-epidemica", "fonte-comum"]),
+            ChapterDef(4, "Vigilância e programas de monitoramento", 4, 25,
+                       ["vigilancia", "ativa-passiva", "sindromica", "programas-oficiais", "rastreabilidade"]),
+            ChapterDef(5, "Medicina preventiva e One Health", 5, 25,
+                       ["medicina-preventiva", "niveis-de-prevencao", "one-health", "ram"]),
+            ChapterDef(6, "Revisão rápida e flashcards", 6, 20,
+                       ["revisao", "flashcards", "epidemiologia"]),
+        ],
+    ),
 ]
 
 
