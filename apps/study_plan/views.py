@@ -25,6 +25,7 @@ class PlanDashboardView(LoginRequiredMixin, TemplateView):
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
         ctx["summary"] = PlanService.get_plan_summary(self.request.user)
+        ctx["avicultura_progresses"] = PlanService.get_avicultura_progresses(self.request.user)
         return ctx
 
 
@@ -33,13 +34,30 @@ class ModuleListView(LoginRequiredMixin, TemplateView):
 
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
-        modules = StudyModule.objects.filter(is_active=True).select_related("subject")
+        # A trilha de Avicultura é separada (área própria) — não entra aqui.
+        modules = (
+            StudyModule.objects.filter(is_active=True)
+            .exclude(slug__startswith=StudyModule.AVICULTURA_PREFIX)
+            .select_related("subject")
+        )
         progresses = [
             PlanService.get_module_progress(self.request.user, m)
             for m in modules
         ]
         ctx["specific_progresses"] = [p for p in progresses if p.module.category == "specific"]
         ctx["basic_progresses"] = [p for p in progresses if p.module.category == "basic"]
+        ctx["avicultura_progresses"] = PlanService.get_avicultura_progresses(self.request.user)
+        return ctx
+
+
+class AviculturaTrackView(LoginRequiredMixin, TemplateView):
+    """Área separada da trilha de Avicultura (todos os módulos de avicultura)."""
+
+    template_name = "study_plan/avicultura_track.html"
+
+    def get_context_data(self, **kwargs):
+        ctx = super().get_context_data(**kwargs)
+        ctx["avicultura_progresses"] = PlanService.get_avicultura_progresses(self.request.user)
         return ctx
 
 

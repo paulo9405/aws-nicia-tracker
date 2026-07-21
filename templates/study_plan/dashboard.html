@@ -80,6 +80,26 @@
   </div>
 </div>
 
+{# ── Trilha separada de Avicultura ───────────────────────────────── #}
+{% if avicultura_progresses %}
+<a href="{% url 'study_plan:avicultura' %}" class="text-decoration-none">
+  <div class="card border-0 shadow-sm card-hover mb-4" style="background:linear-gradient(90deg,#fff7ef,#ffffff);border-left:4px solid #b5651d !important">
+    <div class="card-body d-flex align-items-center justify-content-between">
+      <div class="d-flex align-items-center">
+        <span class="fs-1 me-3">🐔</span>
+        <div>
+          <div class="fw-semibold">Avicultura <span class="badge bg-secondary ms-1">trilha separada</span></div>
+          <div class="small text-muted">
+            Base técnica ({{ avicultura_progresses|length }} módulo{{ avicultura_progresses|length|pluralize }}) — fora do plano do concurso.
+          </div>
+        </div>
+      </div>
+      <span class="text-nowrap text-primary">Abrir trilha <i class="bi bi-arrow-right ms-1"></i></span>
+    </div>
+  </div>
+</a>
+{% endif %}
+
 {# ── Módulos Específicos ─────────────────────────────────────────── #}
 <h5 class="fw-semibold text-muted mb-3">
   <i class="bi bi-bookmark-star me-1"></i>Conhecimentos Específicos

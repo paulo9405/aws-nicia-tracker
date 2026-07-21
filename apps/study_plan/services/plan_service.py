@@ -97,7 +97,12 @@ class PlanService:
 
     @staticmethod
     def get_plan_summary(user) -> PlanSummary:
-        modules = StudyModule.objects.filter(is_active=True).select_related("subject")
+        # Trilha de Avicultura é separada: não entra no resumo do concurso.
+        modules = (
+            StudyModule.objects.filter(is_active=True)
+            .exclude(slug__startswith=StudyModule.AVICULTURA_PREFIX)
+            .select_related("subject")
+        )
         module_progresses = []
         total_chapters = 0
         total_completed = 0
@@ -126,11 +131,24 @@ class PlanService:
         )
 
     @staticmethod
+    def get_avicultura_progresses(user) -> list[ModuleProgress]:
+        """Progresso dos módulos da trilha de Avicultura (área separada do concurso)."""
+        modules = (
+            StudyModule.objects.filter(
+                is_active=True, slug__startswith=StudyModule.AVICULTURA_PREFIX
+            )
+            .select_related("subject")
+            .order_by("order")
+        )
+        return [PlanService.get_module_progress(user, m) for m in modules]
+
+    @staticmethod
     def get_next_chapter(user) -> StudyChapter | None:
         """Retorna o próximo capítulo a ser estudado: em andamento primeiro, depois não iniciado."""
-        # Primeiro: capítulo em andamento mais antigo
+        # Primeiro: capítulo em andamento mais antigo (ignora a trilha de Avicultura)
         in_progress = (
             LessonProgress.objects.filter(user=user, status=LessonProgress.IN_PROGRESS)
+            .exclude(chapter__module__slug__startswith=StudyModule.AVICULTURA_PREFIX)
             .select_related("chapter__module")
             .order_by("chapter__module__order", "chapter__order")
             .first()
@@ -152,6 +170,7 @@ class PlanService:
         return (
             StudyChapter.objects.filter(is_active=True)
             .exclude(id__in=excluded)
+            .exclude(module__slug__startswith=StudyModule.AVICULTURA_PREFIX)
             .select_related("module")
             .order_by("module__order", "order")
             .first()
@@ -253,11 +272,16 @@ class PlanService:
         """Agrega todas as métricas de progresso para a ProgressView."""
         from apps.exams.models import Quiz
 
-        modules = StudyModule.objects.filter(is_active=True)
+        # Estatísticas do concurso: a trilha de Avicultura é contada à parte.
+        modules = StudyModule.objects.filter(is_active=True).exclude(
+            slug__startswith=StudyModule.AVICULTURA_PREFIX
+        )
         total_modules = modules.count()
 
         all_chapter_ids = list(
-            StudyChapter.objects.filter(is_active=True).values_list("id", flat=True)
+            StudyChapter.objects.filter(is_active=True)
+            .exclude(module__slug__startswith=StudyModule.AVICULTURA_PREFIX)
+            .values_list("id", flat=True)
         )
         total_chapters = len(all_chapter_ids)
 

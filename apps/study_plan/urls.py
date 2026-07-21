@@ -7,6 +7,7 @@ app_name = "study_plan"
 urlpatterns = [
     path("", views.PlanDashboardView.as_view(), name="dashboard"),
     path("modulos/", views.ModuleListView.as_view(), name="module_list"),
+    path("avicultura/", views.AviculturaTrackView.as_view(), name="avicultura"),
     path("modulo/<slug:slug>/", views.ModuleDetailView.as_view(), name="module_detail"),
     path("capitulo/<slug:module_slug>/<slug:slug>/", views.ChapterReadView.as_view(), name="chapter_read"),
     path("capitulo/<slug:module_slug>/<slug:slug>/concluir/", views.ChapterCompleteView.as_view(), name="chapter_complete"),

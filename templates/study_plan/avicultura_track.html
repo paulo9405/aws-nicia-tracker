@@ -1,0 +1,70 @@
+{% extends "base.html" %}
+
+{% block title %}Avicultura — Trilha de Estudo{% endblock %}
+
+{% block content %}
+<nav aria-label="breadcrumb" class="mb-3">
+  <ol class="breadcrumb">
+    <li class="breadcrumb-item"><a href="{% url 'study_plan:dashboard' %}">Plano de Estudos</a></li>
+    <li class="breadcrumb-item active">Avicultura</li>
+  </ol>
+</nav>
+
+<div class="d-flex align-items-center mb-2">
+  <span class="fs-2 me-2">🐔</span>
+  <h2 class="h4 mb-0">Avicultura</h2>
+</div>
+<p class="text-muted mb-4">
+  Trilha independente do concurso — base técnica de avicultura organizada por temas
+  (doenças, nutrição, manejo, biossegurança, incubação e mais). Cada módulo tem seus capítulos.
+</p>
+
+<div class="row g-3">
+  {% for mp in avicultura_progresses %}
+  <div class="col-md-6">
+    <a href="{% url 'study_plan:module_detail' mp.module.slug %}" class="text-decoration-none">
+      <div class="card border-0 shadow-sm card-hover h-100">
+        <div class="card-body">
+          <div class="d-flex align-items-center mb-2">
+            <span class="fs-3 me-3">{{ mp.module.icon }}</span>
+            <div>
+              <div class="fw-semibold">{{ mp.module.title }}</div>
+              <div class="small text-muted">
+                {{ mp.module.estimated_hours }}h estimadas
+              </div>
+            </div>
+          </div>
+          <p class="small text-muted mb-2">{{ mp.module.description }}</p>
+          <div class="d-flex align-items-center justify-content-between">
+            <span class="small text-muted">{{ mp.completed }}/{{ mp.total_chapters }} capítulos</span>
+            {% if mp.percentage == 100 %}
+              <span class="badge bg-success">✅ Concluído</span>
+            {% elif mp.in_progress > 0 %}
+              <span class="badge bg-warning text-dark">Em andamento</span>
+            {% else %}
+              <span class="badge bg-secondary">Não iniciado</span>
+            {% endif %}
+          </div>
+          <div class="progress mt-2" style="height:6px">
+            <div class="progress-bar
+              {% if mp.percentage == 100 %}bg-success
+              {% elif mp.percentage >= 50 %}bg-primary
+              {% else %}bg-secondary{% endif %}"
+              style="width:{{ mp.percentage }}%"></div>
+          </div>
+        </div>
+      </div>
+    </a>
+  </div>
+  {% empty %}
+  <p class="text-muted">Nenhum módulo de avicultura cadastrado ainda.</p>
+  {% endfor %}
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+  .card-hover { transition: transform .15s, box-shadow .15s; }
+  .card-hover:hover { transform: translateY(-2px); box-shadow: 0 .5rem 1rem rgba(0,0,0,.12) !important; }
+</style>
+{% endblock %}

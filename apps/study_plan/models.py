@@ -19,6 +19,10 @@ class StudyModule(BaseModel):
         (PHASE_4, "Fase 4 — Reta Final"),
     ]
 
+    # Módulos da trilha de Avicultura usam este prefixo de slug. É a fonte única
+    # de verdade que separa a trilha de Avicultura do material do concurso.
+    AVICULTURA_PREFIX = "avicultura-"
+
     subject = models.OneToOneField(
         Subject,
         on_delete=models.SET_NULL,
@@ -62,6 +66,10 @@ class StudyModule(BaseModel):
     @property
     def chapter_count(self):
         return self.chapters.filter(is_active=True).count()
+
+    @property
+    def is_avicultura(self) -> bool:
+        return self.slug.startswith(self.AVICULTURA_PREFIX)
 
 
 class StudyChapter(BaseModel):
