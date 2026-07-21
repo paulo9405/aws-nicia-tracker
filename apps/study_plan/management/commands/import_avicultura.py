@@ -63,7 +63,7 @@ class ModuleDef:
 # ── Mapa da trilha de Avicultura (adicionar novos módulos aqui) ──────────────
 AVICULTURA_MAP: list[ModuleDef] = [
     ModuleDef(
-        order=AVICULTURA_ORDER_BASE + 0,  # 15
+        order=AVICULTURA_ORDER_BASE + 2,  # 17 (Doenças após o eixo ovo→pintinho)
         title="Avicultura — Doenças",
         slug="avicultura-doencas",
         master_file="avicultura/ESTUDO_NICIA/AVICULTURA_DOENCAS_MASTER.md",
@@ -136,7 +136,7 @@ AVICULTURA_MAP: list[ModuleDef] = [
         ],
     ),
     ModuleDef(
-        order=AVICULTURA_ORDER_BASE + 2,  # 17
+        order=AVICULTURA_ORDER_BASE + 0,  # 15 (início do eixo: matriz → ovo fértil)
         title="Avicultura — Reprodução e Ovos Férteis",
         slug="avicultura-reproducao",
         master_file="avicultura/ESTUDO_NICIA/AVICULTURA_REPRODUCAO_MASTER.md",
@@ -168,6 +168,43 @@ AVICULTURA_MAP: list[ModuleDef] = [
                        ["falhas-reprodutivas", "queda-fertilidade", "queda-postura", "breakout"]),
             ChapterDef(8, "Revisão rápida e flashcards", 8, 20,
                        ["revisao", "flashcards", "reproducao"]),
+        ],
+    ),
+    ModuleDef(
+        order=AVICULTURA_ORDER_BASE + 3,  # 18
+        title="Avicultura — Nutrição",
+        slug="avicultura-nutricao",
+        master_file="avicultura/ESTUDO_NICIA/AVICULTURA_NUTRICAO_MASTER.md",
+        subject_name="Avicultura — Nutrição",
+        subject_slug="avicultura-nutricao",
+        subject_color="#8a9a3a",
+        study_phase="1",
+        estimated_hours=14.0,
+        icon="🌽",
+        description=(
+            "Nutrientes (água, energia, proteína, vitaminas, minerais), formulação, "
+            "alimentação por categoria, micotoxinas e diagnóstico diferencial "
+            "nutricional. Condensado do Módulo 4 da base documental de avicultura."
+        ),
+        chapters=[
+            ChapterDef(1, "Fundamentos da nutrição (nutrientes, energia, consumo × energia)", 1, 25,
+                       ["fundamentos-nutricao", "energia-metabolizavel", "proteina-ideal", "aminoacido-limitante"]),
+            ChapterDef(2, "Água — o nutriente mais crítico", 2, 20,
+                       ["agua", "qualidade-agua", "cloracao", "biofilme"]),
+            ChapterDef(3, "Energia e lipídios", 3, 25,
+                       ["energia", "lipidios", "acido-linoleico", "rancidez"]),
+            ChapterDef(4, "Proteínas e aminoácidos", 4, 30,
+                       ["proteina", "aminoacidos", "lisina", "metionina", "aminoacidos-digestiveis"]),
+            ChapterDef(5, "Vitaminas e minerais", 5, 40,
+                       ["vitaminas", "minerais", "deficiencias", "perose", "calcio-fosforo"]),
+            ChapterDef(6, "Formulação de rações e alimentação por categoria", 6, 35,
+                       ["formulacao", "alimentacao-por-categoria", "poedeira", "matriz", "pintinho"]),
+            ChapterDef(7, "Micotoxinas, adsorventes e controle", 7, 35,
+                       ["micotoxinas", "aflatoxina", "adsorventes", "imunossupressao", "limite-mapa"]),
+            ChapterDef(8, "Deficiências nutricionais e diagnóstico diferencial", 8, 35,
+                       ["diagnostico-diferencial", "deficiencias-nutricionais", "nutricional-vs-infeccioso"]),
+            ChapterDef(9, "Revisão rápida e flashcards", 9, 20,
+                       ["revisao", "flashcards", "nutricao"]),
         ],
     ),
 ]
