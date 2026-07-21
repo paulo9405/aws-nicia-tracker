@@ -439,6 +439,40 @@ AVICULTURA_MAP: list[ModuleDef] = [
                        ["revisao", "flashcards", "anatomia", "fisiologia"]),
         ],
     ),
+    ModuleDef(
+        order=AVICULTURA_ORDER_BASE + 11,  # 26
+        title="Avicultura — Legislação",
+        slug="avicultura-legislacao",
+        master_file="avicultura/ESTUDO_NICIA/AVICULTURA_LEGISLACAO_MASTER.md",
+        subject_name="Avicultura — Legislação",
+        subject_slug="avicultura-legislacao",
+        subject_color="#7a6a3a",
+        study_phase="1",
+        estimated_hours=7.0,
+        icon="⚖️",
+        description=(
+            "Marco legal da avicultura brasileira: órgãos e hierarquia, PNSA, "
+            "notificação obrigatória e contingência, trânsito/certificação/inspeção, "
+            "antimicrobianos e micotoxinas, orgânicos. Reconfirmado em fonte oficial "
+            "(com aviso de vigência). Condensado do Módulo 14 da base."
+        ),
+        chapters=[
+            ChapterDef(1, "Órgãos e hierarquia das normas", 1, 20,
+                       ["orgaos", "mapa", "anvisa", "hierarquia", "vigencia"]),
+            ChapterDef(2, "PNSA — Programa Nacional de Sanidade Avícola", 2, 25,
+                       ["pnsa", "estabelecimentos", "salmonella", "micoplasma", "reprodutoras"]),
+            ChapterDef(3, "Notificação obrigatória e contingência", 3, 25,
+                       ["notificacao-obrigatoria", "influenza-aviaria", "newcastle", "contingencia"]),
+            ChapterDef(4, "Trânsito, certificação e inspeção", 4, 25,
+                       ["gta", "riispoa", "pncrc", "certificacao", "exportacao"]),
+            ChapterDef(5, "Antimicrobianos e micotoxinas", 5, 25,
+                       ["antimicrobianos", "promotores", "aflatoxina", "micotoxinas", "portaria-1617"]),
+            ChapterDef(6, "Produção orgânica e biosseguridade", 6, 20,
+                       ["organicos", "lei-10831", "biosseguridade", "bem-estar-legal"]),
+            ChapterDef(7, "Revisão rápida e flashcards", 7, 20,
+                       ["revisao", "flashcards", "legislacao"]),
+        ],
+    ),
 ]
 
 
