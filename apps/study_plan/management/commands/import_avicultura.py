@@ -97,6 +97,44 @@ AVICULTURA_MAP: list[ModuleDef] = [
                        ["revisao", "flashcards", "avicultura"]),
         ],
     ),
+    ModuleDef(
+        order=AVICULTURA_ORDER_BASE + 1,  # 16
+        title="Avicultura — Incubação e Incubatórios",
+        slug="avicultura-incubacao",
+        master_file="avicultura/ESTUDO_NICIA/AVICULTURA_INCUBACAO_MASTER.md",
+        subject_name="Avicultura — Incubação",
+        subject_slug="avicultura-incubacao",
+        subject_color="#c98a3a",
+        study_phase="1",
+        estimated_hours=12.0,
+        icon="🥚",
+        description=(
+            "Do ovo fértil ao pintinho de um dia: estrutura do incubatório, "
+            "desenvolvimento embrionário, temperatura/umidade/ventilação, viragem, "
+            "nascimento, qualidade de pintinhos e embriodiagnóstico. Condensado do "
+            "Módulo 7 da base documental de avicultura."
+        ),
+        chapters=[
+            ChapterDef(1, "Estrutura e fluxo do incubatório", 1, 20,
+                       ["incubatorio", "fluxo-limpo-sujo", "biosseguranca", "zonas"]),
+            ChapterDef(2, "Desenvolvimento embrionário dia a dia", 2, 30,
+                       ["desenvolvimento-embrionario", "21-dias", "embriao", "camara-de-ar"]),
+            ChapterDef(3, "Princípios da incubação (4 fatores e estágio único × múltiplo)", 3, 30,
+                       ["principios-incubacao", "setter", "hatcher", "single-stage", "multi-stage"]),
+            ChapterDef(4, "Temperatura, umidade e ventilação", 4, 40,
+                       ["temperatura", "umidade", "perda-de-peso-do-ovo", "ventilacao", "co2"]),
+            ChapterDef(5, "Viragem, transferência e nascimento", 5, 30,
+                       ["viragem", "transferencia", "nascimento", "janela-de-nascimento", "bicagem"]),
+            ChapterDef(6, "Processamento, sexagem e vacinação no incubatório", 6, 30,
+                       ["processamento", "sexagem", "vacinacao-in-ovo", "marek", "refugagem"]),
+            ChapterDef(7, "Qualidade e expedição de pintinhos", 7, 30,
+                       ["qualidade-pintinho", "escore-pasgar", "umbigo", "expedicao", "transporte"]),
+            ChapterDef(8, "Falhas, mortalidade embrionária e embriodiagnóstico", 8, 35,
+                       ["falhas-incubacao", "mortalidade-embrionaria", "embriodiagnostico", "breakout"]),
+            ChapterDef(9, "Revisão rápida e flashcards", 9, 20,
+                       ["revisao", "flashcards", "incubacao"]),
+        ],
+    ),
 ]
 
 
