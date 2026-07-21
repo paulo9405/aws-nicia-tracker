@@ -308,6 +308,37 @@ AVICULTURA_MAP: list[ModuleDef] = [
                        ["revisao", "flashcards", "vacinas"]),
         ],
     ),
+    ModuleDef(
+        order=AVICULTURA_ORDER_BASE + 7,  # 22
+        title="Avicultura — Diagnóstico",
+        slug="avicultura-diagnostico",
+        master_file="avicultura/ESTUDO_NICIA/AVICULTURA_DIAGNOSTICO_MASTER.md",
+        subject_name="Avicultura — Diagnóstico",
+        subject_slug="avicultura-diagnostico",
+        subject_color="#3a7a9a",
+        study_phase="1",
+        estimated_hours=8.0,
+        icon="🔬",
+        description=(
+            "Raciocínio diagnóstico de lote, coleta/amostragem, métodos diretos "
+            "(PCR, isolamento, histopatologia, antibiograma, sequenciamento), "
+            "sorologia/monitoramento e interpretação de laudos. Condensado do Módulo 11."
+        ),
+        chapters=[
+            ChapterDef(1, "Abordagem diagnóstica (investigação do lote)", 1, 25,
+                       ["abordagem-diagnostica", "anamnese", "necropsia", "hipoteses"]),
+            ChapterDef(2, "Coleta, amostragem e cadeia de custódia", 2, 30,
+                       ["coleta", "amostragem", "cadeia-de-custodia", "cadeia-de-frio", "formol"]),
+            ChapterDef(3, "Métodos diretos (detecção do agente)", 3, 35,
+                       ["metodos-diretos", "pcr", "isolamento", "histopatologia", "antibiograma", "sequenciamento"]),
+            ChapterDef(4, "Sorologia e monitoramento sorológico", 4, 30,
+                       ["sorologia", "elisa", "hi", "titulo", "cv", "soroconversao"]),
+            ChapterDef(5, "Interpretação de laudos e integração", 5, 25,
+                       ["interpretacao-laudos", "falso-positivo", "falso-negativo", "coinfeccao"]),
+            ChapterDef(6, "Revisão rápida e flashcards", 6, 20,
+                       ["revisao", "flashcards", "diagnostico"]),
+        ],
+    ),
 ]
 
 
