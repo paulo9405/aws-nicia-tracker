@@ -26,6 +26,7 @@ class PlanDashboardView(LoginRequiredMixin, TemplateView):
         ctx = super().get_context_data(**kwargs)
         ctx["summary"] = PlanService.get_plan_summary(self.request.user)
         ctx["avicultura_progresses"] = PlanService.get_avicultura_progresses(self.request.user)
+        ctx["headinvest_progresses"] = PlanService.get_headinvest_progresses(self.request.user)
         return ctx
 
 
@@ -34,10 +35,11 @@ class ModuleListView(LoginRequiredMixin, TemplateView):
 
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
-        # A trilha de Avicultura é separada (área própria) — não entra aqui.
+        # As trilhas separadas (Avicultura, HeadInvest) têm área própria — não entram aqui.
         modules = (
             StudyModule.objects.filter(is_active=True)
             .exclude(slug__startswith=StudyModule.AVICULTURA_PREFIX)
+            .exclude(slug__startswith=StudyModule.HEADINVEST_PREFIX)
             .select_related("subject")
         )
         progresses = [
@@ -47,6 +49,7 @@ class ModuleListView(LoginRequiredMixin, TemplateView):
         ctx["specific_progresses"] = [p for p in progresses if p.module.category == "specific"]
         ctx["basic_progresses"] = [p for p in progresses if p.module.category == "basic"]
         ctx["avicultura_progresses"] = PlanService.get_avicultura_progresses(self.request.user)
+        ctx["headinvest_progresses"] = PlanService.get_headinvest_progresses(self.request.user)
         return ctx
 
 
@@ -58,6 +61,17 @@ class AviculturaTrackView(LoginRequiredMixin, TemplateView):
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
         ctx["avicultura_progresses"] = PlanService.get_avicultura_progresses(self.request.user)
+        return ctx
+
+
+class HeadInvestTrackView(LoginRequiredMixin, TemplateView):
+    """Área separada da trilha HeadInvest (preparação para entrevista)."""
+
+    template_name = "study_plan/headinvest_track.html"
+
+    def get_context_data(self, **kwargs):
+        ctx = super().get_context_data(**kwargs)
+        ctx["headinvest_progresses"] = PlanService.get_headinvest_progresses(self.request.user)
         return ctx
 
 
