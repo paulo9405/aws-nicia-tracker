@@ -171,11 +171,13 @@ class Command(BaseCommand):
         existing.board = HEADINVEST_BOARD
         existing.is_active = True
         existing.save()
-        # Regrava alternativas (simples e seguro dentro da transação).
-        existing.alternatives.all().delete()
-        Alternative.objects.bulk_create([
-            Alternative(question=existing, letter=a.letter,
-                        text=a.text, is_correct=a.is_correct)
-            for a in parsed.alternatives
-        ])
+        # Atualiza as alternativas no lugar (por letra A–D), sem apagar linhas:
+        # Alternative é referenciada por UserAnswer.selected_alternative com PROTECT,
+        # então delete+recria quebraria após um usuário já ter respondido a questão.
+        for a in parsed.alternatives:
+            Alternative.objects.update_or_create(
+                question=existing,
+                letter=a.letter,
+                defaults={"text": a.text, "is_correct": a.is_correct},
+            )
         return "updated"
