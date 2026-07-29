@@ -1,6 +1,11 @@
 # Segredos — nunca devem entrar na imagem
 .env
 .env.*
+*.pem
+*.key
+backups/
+*.dump
+*.sql
 
 # Controle de versão
 .git
